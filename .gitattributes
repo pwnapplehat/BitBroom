@@ -1,0 +1,26 @@
+# Normalize line endings: let Git manage EOL, checkout native, commit LF.
+* text=auto
+
+# Explicit text types
+*.cs        text
+*.csproj    text
+*.sln       text eol=crlf
+*.xaml      text
+*.md        text
+*.json      text
+*.yml       text
+*.yaml      text
+*.ps1       text
+*.iss       text
+*.manifest  text
+*.props     text
+*.editorconfig text
+.gitignore  text
+.gitattributes text
+
+# Binary assets — never touch
+*.png       binary
+*.ico       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary

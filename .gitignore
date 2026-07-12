@@ -1,0 +1,42 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+dist/
+artifacts/
+TestResults/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+
+# Publish output
+publish/
+*.publish.xml
+
+# NuGet
+*.nupkg
+packages/
+
+# Test / coverage
+*.trx
+*.coverage
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# OS junk (fitting, for this repo)
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Installer build output
+installer/Output/
+
+# Screenshot capture default output
+shot.png

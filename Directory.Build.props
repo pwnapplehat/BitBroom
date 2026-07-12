@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>1.0.0</Version>
+    <Product>BitBroom</Product>
+    <Authors>BitBroom Contributors</Authors>
+    <Company>BitBroom Contributors</Company>
+    <Copyright>© 2026 BitBroom Contributors. MIT License.</Copyright>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/pwnapplehat/BitBroom</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/pwnapplehat/BitBroom</PackageProjectUrl>
+    <NeutralLanguage>en</NeutralLanguage>
+    <AccelerateBuildsInVisualStudio>true</AccelerateBuildsInVisualStudio>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+  </PropertyGroup>
+</Project>

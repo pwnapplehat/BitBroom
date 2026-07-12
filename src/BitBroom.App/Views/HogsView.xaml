@@ -1,0 +1,79 @@
+<UserControl x:Class="BitBroom.App.Views.HogsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:anim="clr-namespace:BitBroom.App.Animations"
+             xmlns:controls="clr-namespace:BitBroom.App.Controls"
+             anim:Anim.Transition="SlideFade">
+  <Grid x:Name="HogsRoot" Margin="28,24,28,20" DataContext="{Binding Hogs}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0">
+      <StackPanel>
+        <TextBlock Text="Space Hogs" Style="{StaticResource Text.Title}"/>
+        <TextBlock Style="{StaticResource Text.Subtitle}" Margin="0,6,0,0"
+                   Text="The hidden consumers behind “my C: drive filled up for no reason” — hibernation files, WSL/Docker disks, restore points, search indexes, known Windows bugs. Report-only: each finding explains the safe, supported fix."/>
+      </StackPanel>
+      <Button Command="{Binding InspectCommand}" Style="{StaticResource Button.Accent}" MinWidth="110"
+              HorizontalAlignment="Right" VerticalAlignment="Top">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE721;" FontFamily="{StaticResource Font.Icons}" FontSize="13" VerticalAlignment="Center"/>
+          <TextBlock Text="Inspect" Margin="8,0,0,0"/>
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <ScrollViewer Grid.Row="1" Margin="0,16,0,0" VerticalScrollBarVisibility="Auto"
+                  anim:Anim.SmoothScroll="True">
+      <StackPanel>
+        <controls:ShimmerBar Margin="0,0,0,14"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+        <TextBlock Text="Nothing notable found — no oversized hidden consumers detected."
+                   Style="{StaticResource Text.Body}" Foreground="{StaticResource Brush.Success}"
+                   Visibility="{Binding NothingFound, Converter={StaticResource BoolToVis}}"/>
+        <ItemsControl ItemsSource="{Binding Hogs}" anim:Anim.StaggerChildren="True">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                      <Border Style="{StaticResource Badge}" Background="#141B2B45" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding SeverityLabel}" FontSize="9.5" FontWeight="SemiBold"
+                                   Foreground="{Binding Severity, Converter={StaticResource SeverityBrush}}"/>
+                      </Border>
+                      <TextBlock Text="{Binding Title}" FontSize="14.5" FontWeight="SemiBold" Foreground="{StaticResource Brush.Text}"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Text.Caption}" Margin="0,8,0,0" FontSize="12"/>
+                    <Border Background="#12203040" CornerRadius="6" Padding="10,8" Margin="0,10,0,0">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xEA80;" FontFamily="{StaticResource Font.Icons}" FontSize="12"
+                                   Foreground="{StaticResource Brush.Accent}" VerticalAlignment="Top" Margin="0,2,8,0"/>
+                        <TextBlock Text="{Binding Guidance}" Style="{StaticResource Text.Caption}" FontSize="12"
+                                   Foreground="{StaticResource Brush.TextSecondary}" MaxWidth="760"/>
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Margin="16,0,0,0" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding SizeText}" FontSize="19" FontWeight="SemiBold"
+                               Foreground="{StaticResource Brush.Text}" HorizontalAlignment="Right"/>
+                    <Button Content="Open location" Style="{StaticResource Button.Subtle}" Padding="8,4" Margin="0,8,0,0"
+                            Visibility="{Binding HasPath, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding DataContext.Hogs.OpenPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}"/>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

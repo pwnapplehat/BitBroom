@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>BitBroom.Core</RootNamespace>
+    <AssemblyName>BitBroom.Core</AssemblyName>
+    <Description>BitBroom cleaning engine: safety-first junk scanning and removal for Windows.</Description>
+  </PropertyGroup>
+
+</Project>

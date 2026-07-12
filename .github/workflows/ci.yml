@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore BitBroom.sln
+
+      - name: Build
+        run: dotnet build BitBroom.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/BitBroom.Core.Tests/BitBroom.Core.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Publish (win-x64)
+        run: ./build/publish.ps1 -Runtime win-x64
+        shell: pwsh
+
+      - name: Publish (win-arm64)
+        run: ./build/publish.ps1 -Runtime win-arm64
+        shell: pwsh
+
+      - name: Upload artifacts (x64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BitBroom-win-x64
+          path: dist/win-x64/
+
+      - name: Upload artifacts (arm64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: BitBroom-win-arm64
+          path: dist/win-arm64/
+
+  release:
+    needs: build-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        run: |
+          ./build/publish.ps1 -Runtime win-x64
+          ./build/publish.ps1 -Runtime win-arm64
+        shell: pwsh
+
+      - name: Build installer
+        run: |
+          choco install innosetup --version=6.3.3 -y --no-progress
+          & "$Env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" installer/bitbroom.iss
+        shell: pwsh
+
+      - name: Zip portable builds
+        run: |
+          Compress-Archive -Path dist/win-x64/* -DestinationPath BitBroom-portable-win-x64.zip
+          Compress-Archive -Path dist/win-arm64/* -DestinationPath BitBroom-portable-win-arm64.zip
+        shell: pwsh
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            BitBroom-portable-win-x64.zip
+            BitBroom-portable-win-arm64.zip
+            installer/Output/*.exe
+          generate_release_notes: true

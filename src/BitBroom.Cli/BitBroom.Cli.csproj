@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>BitBroom.Cli</RootNamespace>
+    <!-- Distinct from the GUI's BitBroom.exe: Windows filesystems are case-insensitive. -->
+    <AssemblyName>bitbroom-cli</AssemblyName>
+    <Description>BitBroom command-line interface.</Description>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BitBroom.Core\BitBroom.Core.csproj" />
+  </ItemGroup>
+
+</Project>
