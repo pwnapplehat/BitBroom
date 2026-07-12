@@ -17,8 +17,10 @@ actively defend:
   `..`, rooted patterns and env-var surprises are rejected (depth guard).
 - **TOCTOU between scan and clean:** every deletion re-validates path containment and
   re-reads attributes immediately before the delete call.
-- **Supply chain:** the engine and GUI have zero third-party runtime dependencies
-  (test projects use xunit). No network code exists anywhere in the product.
+- **Supply chain:** the cleaning engine and CLI have zero third-party runtime dependencies.
+  The GUI's single dependency is the MIT-licensed WPF UI library (Fluent controls,
+  pinned version, source-auditable, no network code); test projects use xunit.
+  No network code exists anywhere in the product.
 
 ## Reporting a vulnerability
 

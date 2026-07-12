@@ -1,12 +1,28 @@
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
-using BitBroom.App.Interop;
+using BitBroom.App.Services;
 using BitBroom.App.ViewModels;
+using BitBroom.App.Views;
+using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
+using Wpf.Ui.Interop;
 
 namespace BitBroom.App;
 
-public partial class MainWindow : Window
+public partial class MainWindow : FluentWindow
 {
+    private static readonly Type[] TabPages =
+    [
+        typeof(DashboardView),
+        typeof(CleanView),
+        typeof(AnalyzerView),
+        typeof(HogsView),
+        typeof(ToolsView),
+        typeof(SettingsView),
+        typeof(AboutView),
+    ];
+
     private bool _splashPlayed;
 
     public MainWindow(int? initialTab = null, bool autoScan = false)
@@ -14,22 +30,20 @@ public partial class MainWindow : Window
         InitializeComponent();
         var viewModel = new MainViewModel();
         DataContext = viewModel;
-        StateChanged += (_, _) =>
-            MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
 
-        if (initialTab is int tab && tab is >= 0 and <= 6)
-        {
-            viewModel.SelectedTab = tab;
-        }
+        RootNavigation.SetPageProviderService(new PageService(viewModel));
+        viewModel.NavigateRequested += tab => NavigateToTab(tab);
 
         Loaded += (_, _) =>
         {
+            int tab = initialTab is int t && t >= 0 && t < TabPages.Length ? t : 0;
+            NavigateToTab(tab);
             PlaySplash();
 
             if (autoScan)
             {
                 // Read-only scan on launch (used for docs screenshots and smoke testing).
-                switch (viewModel.SelectedTab)
+                switch (tab)
                 {
                     case 1:
                         viewModel.Clean.ScanCommand.Execute(null);
@@ -49,7 +63,24 @@ public partial class MainWindow : Window
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        Dwm.ApplyWindowStyling(this);
+
+        // The DWM backdrop only shows through transparent pixels: apply dark theme +
+        // acrylic, then clear the window background so the taskbar-style wallpaper
+        // blur comes through. On Windows 10 (no acrylic backdrop) the solid dark
+        // ApplicationBackgroundBrush stays in place.
+        ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Acrylic, updateAccent: false);
+        if (WindowBackdrop.ApplyBackdrop(this, WindowBackdropType.Acrylic))
+        {
+            Background = Brushes.Transparent;
+        }
+    }
+
+    private void NavigateToTab(int tab)
+    {
+        if (tab >= 0 && tab < TabPages.Length)
+        {
+            RootNavigation.Navigate(TabPages[tab]);
+        }
     }
 
     private void PlaySplash()
@@ -78,11 +109,4 @@ public partial class MainWindow : Window
             Splash.Visibility = Visibility.Collapsed;
         }
     }
-
-    private void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-
-    private void OnMaximizeRestore(object sender, RoutedEventArgs e)
-        => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-
-    private void OnClose(object sender, RoutedEventArgs e) => Close();
 }

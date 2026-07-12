@@ -40,7 +40,7 @@ treats your data like it's radioactive, and that tells you the truth.**
 | **Space Hogs** | Report-only detector for the big hidden consumers: `hiberfil.sys`, page files, WSL/Docker `.vhdx` disks, System Restore usage, the Windows Search index, the WinSxS component store, DriverStore, Windows Installer cache, oversized Outlook OSTs, the Downloads folder, the `CapabilityAccessManager.db-wal` Windows bug — each with the safe, supported fix explained. |
 | **Tools** | One-click supported maintenance: DISM component-store cleanup & analysis, hibernation off/reduced/on, DNS flush, Explorer restart, System Restore usage. Official Windows mechanisms only, output streamed live. |
 | **CLI** | `bitbroom-cli` — scan/clean/hogs/analyze with `--dry-run`, `--json`, exit codes for scripting and Task Scheduler. |
-| **Motion** | A branded startup animation (the broom literally sweeps bits away), page transitions, staggered reveals, shimmer progress, inertial smooth scrolling and micro-interactions on every control — hand-rolled on WPF's GPU-composited animation system, still with **zero UI dependencies**. |
+| **Native look** | Windows 11 Fluent design end-to-end: acrylic wallpaper-blur backdrop (taskbar-style), native NavigationView, Fluent controls and title bar via the MIT-licensed [WPF UI](https://github.com/lepoco/wpfui) library — plus a branded startup animation, page transitions, staggered reveals, shimmer progress and inertial smooth scrolling. |
 
 <div align="center">
 <img src="assets/screenshots/hogs.png" width="800" alt="Space Hogs tab"/>
@@ -69,6 +69,8 @@ Read [docs/SAFETY.md](docs/SAFETY.md) for the full design. The short version:
 7. **No registry cleaner. Ever.** The consensus from Windows internals experts (Mark Russinovich):
    negligible benefit, real risk. Same for prefetch purging — a [myth that makes boots slower](docs/RESEARCH.md#myths-we-refuse-to-implement).
 8. **Zero network calls.** No telemetry, no update pings, no accounts. The code cannot phone home.
+   The cleaning engine has zero third-party dependencies; the GUI's only dependency is the
+   MIT-licensed, source-auditable WPF UI library (Fluent controls — no network code).
 
 The safety engine is enforced by a test suite whose flagship test plants a junction inside a
 cleaned folder pointing at a canary file — the suite fails if the canary is ever touched.
@@ -118,7 +120,8 @@ Documented with sources in [docs/CATEGORIES.md](docs/CATEGORIES.md#deliberately-
 
 ```
 src/BitBroom.Core/    engine: PathGuard, walker, SafeDeleter, rules, catalog, analyzer, hogs
-src/BitBroom.App/     WPF GUI (dark fluent theme, zero UI dependencies)
+                      (zero third-party dependencies)
+src/BitBroom.App/     WPF GUI — Windows 11 Fluent via WPF UI (MIT), acrylic backdrop
 src/BitBroom.Cli/     bitbroom-cli
 tests/                safety-critical test suite (junction canary & friends)
 docs/                 RESEARCH, SAFETY, CATEGORIES, CLI, BUILDING

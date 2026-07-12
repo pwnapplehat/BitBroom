@@ -44,6 +44,11 @@ public partial class App : Application
             }
         }
 
+        // Brand accent for Fluent controls (Primary buttons, toggles, selection).
+        Wpf.Ui.Appearance.ApplicationAccentColorManager.Apply(
+            System.Windows.Media.Color.FromRgb(0x38, 0xBD, 0xF8),
+            Wpf.Ui.Appearance.ApplicationTheme.Dark);
+
         var window = new MainWindow(initialTab, autoScan);
         MainWindow = window;
         window.Show();

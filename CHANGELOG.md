@@ -5,6 +5,19 @@ All notable changes to BitBroom are documented here. Format follows
 
 ## [1.0.0] — 2026-07-12
 
+### UI revamp — native Windows 11 Fluent
+- Adopted the MIT-licensed [WPF UI](https://github.com/lepoco/wpfui) library (the GUI's
+  single third-party dependency; engine and CLI remain dependency-free): FluentWindow
+  with **acrylic wallpaper-blur backdrop** (taskbar-style, with a smoke tint for contrast;
+  falls back to solid dark on Windows 10), native title bar, real NavigationView with
+  Fluent System Icons, Fluent buttons/checkboxes/toggle switches/combo boxes/scrollbars,
+  Card surfaces and InfoBars.
+- Views are cached across tab switches (scroll positions and in-flight scans survive).
+- Kept: the branded splash intro, page transitions, staggered reveals, shimmer progress,
+  smooth scrolling, brand accent (#38BDF8) and the Display-cut typography.
+- Removed the now-redundant hand-rolled chrome (caption buttons, nav rail, control
+  templates, DWM interop).
+
 ### Hardening (full source audit)
 - Fixed a crash on launching a second instance (single-instance mutex was released by a
   process that never owned it).

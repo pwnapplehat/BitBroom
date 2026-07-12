@@ -19,4 +19,8 @@
     <Resource Include="..\..\assets\icon.ico" Link="Assets\icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
 </Project>

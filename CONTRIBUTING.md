@@ -28,8 +28,8 @@ Thanks for helping make Windows cleaning boring and safe.
 ## Code style
 
 - C# latest, nullable enabled, file-scoped namespaces (`.editorconfig` is authoritative).
-- No new NuGet dependencies without discussion — the zero-dependency UI and small
-  supply-chain surface are deliberate.
+- No new NuGet dependencies without discussion — the small supply-chain surface is
+  deliberate (engine/CLI: zero dependencies; GUI: only the MIT-licensed WPF UI library).
 - Comments explain *why*, not *what*.
 
 ## Reporting bugs

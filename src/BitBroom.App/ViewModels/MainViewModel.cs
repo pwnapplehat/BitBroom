@@ -23,8 +23,6 @@ public sealed class MainViewModel : ObservableObject
 {
     private readonly AppSettings _settings;
     private string _statusText = "Ready";
-    private int _selectedTab;
-
     public CleanViewModel Clean { get; }
     public AnalyzerViewModel Analyzer { get; }
     public HogsViewModel Hogs { get; }
@@ -36,6 +34,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand RestartAsAdminCommand { get; }
     public RelayCommand OpenLogsFolderCommand { get; }
     public RelayCommand NavigateToCleanCommand { get; }
+
+    /// <summary>Raised when a view model wants the shell to switch tabs (index into the nav order).</summary>
+    public event Action<int>? NavigateRequested;
 
     public MainViewModel()
     {
@@ -62,7 +63,7 @@ public sealed class MainViewModel : ObservableObject
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(AppSettings.LogsDirectory) { UseShellExecute = true });
         });
 
-        NavigateToCleanCommand = new RelayCommand(() => SelectedTab = 1);
+        NavigateToCleanCommand = new RelayCommand(() => NavigateRequested?.Invoke(1));
 
         RefreshDrives();
     }
@@ -73,12 +74,6 @@ public sealed class MainViewModel : ObservableObject
     {
         get => _statusText;
         private set => SetProperty(ref _statusText, value);
-    }
-
-    public int SelectedTab
-    {
-        get => _selectedTab;
-        set => SetProperty(ref _selectedTab, value);
     }
 
     public string LifetimeFreedText => ByteFormatter.Format(_settings.LifetimeBytesFreed);
