@@ -37,11 +37,14 @@
   <SolidColorBrush x:Key="Brush.Danger" Color="{StaticResource Color.Danger}"/>
 
   <FontFamily x:Key="Font.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+  <!-- Windows 11 typography: the Display optical cut is tuned for large text (titles). -->
+  <FontFamily x:Key="Font.Display">Segoe UI Variable Display, Segoe UI</FontFamily>
 
   <!-- ======================================================================
        TYPOGRAPHY
        ====================================================================== -->
   <Style x:Key="Text.Title" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource Font.Display}"/>
     <Setter Property="FontSize" Value="24"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="Foreground" Value="{StaticResource Brush.Text}"/>

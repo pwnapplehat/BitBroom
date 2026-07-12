@@ -16,6 +16,7 @@
           <StackPanel>
             <TextBlock Text="LIFETIME SPACE FREED" Style="{StaticResource Text.Section}"/>
             <TextBlock Text="{Binding LifetimeFreedText}" FontSize="30" FontWeight="SemiBold"
+                       FontFamily="{StaticResource Font.Display}"
                        Foreground="{StaticResource Brush.Success}" Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
@@ -23,6 +24,7 @@
           <StackPanel>
             <TextBlock Text="ITEMS CLEANED" Style="{StaticResource Text.Section}"/>
             <TextBlock Text="{Binding LifetimeItemsText}" FontSize="30" FontWeight="SemiBold"
+                       FontFamily="{StaticResource Font.Display}"
                        Foreground="{StaticResource Brush.Text}" Margin="0,8,0,0"/>
           </StackPanel>
         </Border>
@@ -30,6 +32,7 @@
           <StackPanel>
             <TextBlock Text="LAST CLEAN" Style="{StaticResource Text.Section}"/>
             <TextBlock Text="{Binding LastCleanText}" FontSize="22" FontWeight="SemiBold"
+                       FontFamily="{StaticResource Font.Display}"
                        Foreground="{StaticResource Brush.Text}" Margin="0,12,0,0"/>
           </StackPanel>
         </Border>

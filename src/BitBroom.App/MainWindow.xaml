@@ -283,6 +283,7 @@
         </Rectangle>
       </Grid>
       <TextBlock x:Name="SplashTitle" Text="BitBroom" FontSize="32" FontWeight="SemiBold"
+                 FontFamily="{StaticResource Font.Display}"
                  Foreground="{StaticResource Brush.Text}" HorizontalAlignment="Center"
                  Opacity="0" Margin="0,6,0,0" RenderTransformOrigin="0.5,0.5">
         <TextBlock.RenderTransform>
