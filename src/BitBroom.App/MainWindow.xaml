@@ -6,7 +6,7 @@
         Title="BitBroom"
         Width="1280" Height="820" MinWidth="1080" MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        WindowBackdropType="Acrylic"
+        WindowBackdropType="None"
         WindowCornerPreference="Round"
         ExtendsContentIntoTitleBar="True"
         TextOptions.TextFormattingMode="Display"
@@ -137,9 +137,10 @@
 
   <Grid>
 
-    <!-- Taskbar-style smoke tint over the acrylic: the wallpaper blur stays visible,
-         but text and cards keep their contrast on any wallpaper. -->
-    <Border Background="#8C0E1014"/>
+    <!-- Taskbar-style smoke tint over the acrylic (65%): the wallpaper blur stays
+         visible, but text and cards keep their contrast on any wallpaper. Only shown
+         when the acrylic backdrop actually applied (see OnSourceInitialized). -->
+    <Border x:Name="SmokeTint" Background="#A60E1014" Visibility="Collapsed"/>
 
     <Grid x:Name="Shell" RenderTransformOrigin="0.5,0.5">
       <Grid.RenderTransform>

@@ -8,8 +8,9 @@ All notable changes to BitBroom are documented here. Format follows
 ### UI revamp — native Windows 11 Fluent
 - Adopted the MIT-licensed [WPF UI](https://github.com/lepoco/wpfui) library (the GUI's
   single third-party dependency; engine and CLI remain dependency-free): FluentWindow
-  with **acrylic wallpaper-blur backdrop** (taskbar-style, with a smoke tint for contrast;
-  falls back to solid dark on Windows 10), native title bar, real NavigationView with
+  with **acrylic wallpaper-blur backdrop** (taskbar-style, with a 65% smoke tint for
+  contrast; falls back to the stock solid dark background on Windows 10 or when
+  transparency effects are disabled in Settings), native title bar, real NavigationView with
   Fluent System Icons, Fluent buttons/checkboxes/toggle switches/combo boxes/scrollbars,
   Card surfaces and InfoBars.
 - Views are cached across tab switches (scroll positions and in-flight scans survive).

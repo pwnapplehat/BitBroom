@@ -66,12 +66,42 @@ public partial class MainWindow : FluentWindow
 
         // The DWM backdrop only shows through transparent pixels: apply dark theme +
         // acrylic, then clear the window background so the taskbar-style wallpaper
-        // blur comes through. On Windows 10 (no acrylic backdrop) the solid dark
-        // ApplicationBackgroundBrush stays in place.
-        ApplicationThemeManager.Apply(ApplicationTheme.Dark, WindowBackdropType.Acrylic, updateAccent: false);
-        if (WindowBackdrop.ApplyBackdrop(this, WindowBackdropType.Acrylic))
+        // blur comes through (with the smoke tint for contrast). When acrylic can't
+        // apply — Windows 10, or transparency effects disabled in Settings — keep the
+        // stock solid dark background instead. The backdrop is deliberately driven
+        // from here (XAML says None) so DWM never paints its own washed-out acrylic
+        // fallback over our solid background.
+        bool wantAcrylic = IsSystemTransparencyEnabled();
+        ApplicationThemeManager.Apply(
+            ApplicationTheme.Dark,
+            wantAcrylic ? WindowBackdropType.Acrylic : WindowBackdropType.None,
+            updateAccent: false);
+
+        if (wantAcrylic && WindowBackdrop.ApplyBackdrop(this, WindowBackdropType.Acrylic))
         {
+            WindowBackdropType = WindowBackdropType.Acrylic;
             Background = Brushes.Transparent;
+            SmokeTint.Visibility = Visibility.Visible;
+        }
+        else if (TryFindResource("ApplicationBackgroundBrush") is Brush solid)
+        {
+            // Stock WPF UI dark background (#FF202020) — the native Windows grey.
+            Background = solid;
+        }
+    }
+
+    /// <summary>Settings → Personalization → Colors → "Transparency effects".</summary>
+    private static bool IsSystemTransparencyEnabled()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return key?.GetValue("EnableTransparency") is not int enabled || enabled != 0;
+        }
+        catch (Exception)
+        {
+            return true;
         }
     }
 

@@ -49,6 +49,15 @@ if ($hwnd -eq [IntPtr]::Zero) { Write-Error "no main window"; exit 1 }
 Start-Sleep -Milliseconds $SettleMs
 Start-Sleep -Seconds $WaitSeconds
 
+# The splash window may have been the handle we grabbed; it is destroyed once the
+# main window shows. Re-acquire the current main window handle before capturing.
+$proc.Refresh()
+if ($proc.MainWindowHandle -ne [IntPtr]::Zero) { $hwnd = $proc.MainWindowHandle }
+[DpiHelper]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
+[DpiHelper]::SetForegroundWindow($hwnd) | Out-Null
+[DpiHelper]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)
+Start-Sleep -Milliseconds 400
+
 $rect = New-Object DpiHelper+RECT
 [DpiHelper]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
 $width = $rect.Right - $rect.Left
