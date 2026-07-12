@@ -15,8 +15,9 @@ TestResults/
 .vscode/
 .idea/
 
-# Publish output
+# Publish / release output
 publish/
+release/
 *.publish.xml
 
 # NuGet

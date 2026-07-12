@@ -47,8 +47,29 @@ iscc installer\bitbroom.iss     # → installer\Output\BitBroom-<version>-setup.
 
 ## CI
 
-`.github/workflows/ci.yml` builds, tests and publishes x64+ARM64 artifacts on every push,
-and attaches portable zips + the installer to GitHub Releases on `v*` tags.
+`.github/workflows/ci.yml` builds, runs the full test suite, and publishes self-contained
+x64 + ARM64 binaries as downloadable build artifacts on every push, PR, and `v*` tag.
+
+## Cutting a release
+
+Releases are produced from locally built and smoke-tested artifacts so every published
+binary is verified on a real machine first:
+
+```powershell
+# 1. Build both architectures
+./build/publish.ps1 -Runtime win-x64
+./build/publish.ps1 -Runtime win-arm64
+
+# 2. Zip the portable builds and build the installer
+Compress-Archive dist/win-x64/*   release/BitBroom-<ver>-portable-win-x64.zip
+Compress-Archive dist/win-arm64/* release/BitBroom-<ver>-portable-win-arm64.zip
+iscc installer/bitbroom.iss        # -> installer/Output/BitBroom-<ver>-setup.exe
+
+# 3. Tag and publish (attach the zips, the installer, and SHA256SUMS.txt)
+git tag -a v<ver> -m "BitBroom v<ver>"
+git push origin v<ver>
+gh release create v<ver> release/* --title "BitBroom v<ver>" --notes-file <notes>
+```
 
 ## Engine integration testing (sandboxed)
 
