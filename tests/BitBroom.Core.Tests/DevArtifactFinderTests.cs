@@ -58,6 +58,23 @@ public class DevArtifactFinderTests
     }
 
     [Fact]
+    public async Task Pycache_needs_sibling_py_source()
+    {
+        using var sandbox = new TestSandbox();
+        // Real Python package: __pycache__ next to source .py → safe (regenerable).
+        sandbox.CreateFile(@"pkg\app.py", 500);
+        sandbox.CreateFile(@"pkg\__pycache__\app.cpython-312.pyc", 800);
+        // .pyc-only distribution (source stripped) → the bytecode is the ONLY code, must NOT be flagged.
+        sandbox.CreateFile(@"shipped\__pycache__\secret.cpython-312.pyc", 800);
+
+        var finder = new DevArtifactFinder();
+        DevArtifactScanResult result = await finder.ScanAsync(sandbox.Root);
+
+        DevArtifact hit = Assert.Single(result.Artifacts);
+        Assert.Contains(@"pkg\__pycache__", hit.Path);
+    }
+
+    [Fact]
     public async Task Does_not_recurse_into_a_matched_artifact()
     {
         using var sandbox = new TestSandbox();

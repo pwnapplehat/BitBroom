@@ -156,6 +156,56 @@ public class DuplicateAndEmptyFolderTests
         Assert.Null(DuplicateDeleter.ValidatePath(Path.Combine(Path.GetTempPath(), "whatever.bin")));
     }
 
+    [Fact]
+    public void Duplicate_inside_an_installed_app_is_refused_even_though_it_looks_like_a_dupe()
+    {
+        // The same class as the Electron dev-junk bug, but via the duplicate finder: an app
+        // ships a DLL/asset byte-identical to a copy elsewhere. Deleting the app's copy
+        // would break it, so the guard refuses anything in an app-runtime tree.
+        using var sandbox = new TestSandbox();
+        byte[] shared = Pattern(7, 4096);
+        string appCopy = WriteFile(sandbox, @"MyApp\resources\shared.dll", shared);
+        WriteFile(sandbox, @"MyApp\icudtl.dat", new byte[10]); // marks MyApp as an Electron app
+        string userCopy = WriteFile(sandbox, @"Docs\shared.dll", shared);
+
+        var group = new DuplicateGroup
+        {
+            ContentHash = "test",
+            FileSizeBytes = 4096,
+            Files =
+            [
+                new DuplicateFile(userCopy, 4096, DateTime.UtcNow),
+                new DuplicateFile(appCopy, 4096, DateTime.UtcNow),
+            ],
+        };
+
+        using RunLogger logger = NullLogger();
+        var deleter = new DuplicateDeleter(logger);
+        // Even if the user selects the app's copy for deletion, the guard refuses it.
+        DuplicateDeleteResult result = deleter.RecycleSelected(
+            [(group, new List<DuplicateFile> { group.Files.First(f => PathGuard.PathsEqual(f.Path, appCopy)) })]);
+
+        Assert.Equal(0, result.Recycled);
+        Assert.Equal(1, result.RefusedByGuard);
+        Assert.True(File.Exists(appCopy));
+    }
+
+    [Fact]
+    public void Empty_folder_inside_an_installed_app_is_refused()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateFile(@"MyApp\Update.exe", 10); // Squirrel marker → MyApp is an app
+        string emptyInsideApp = sandbox.CreateDirectory("MyApp", "app-1.0", "plugins");
+
+        using RunLogger logger = NullLogger();
+        var deleter = new DuplicateDeleter(logger);
+        DuplicateDeleteResult result = deleter.RecycleEmptyFolders([emptyInsideApp]);
+
+        Assert.Equal(0, result.Recycled);
+        Assert.Equal(1, result.RefusedByGuard);
+        Assert.True(Directory.Exists(emptyInsideApp));
+    }
+
     [SkippableRecycleFact]
     public void Recycle_selected_keeps_the_survivor()
     {

@@ -68,6 +68,44 @@ public class ManualDeleteGuardTests
     }
 
     [Fact]
+    public void Refuses_per_user_installed_apps_under_localappdata_programs()
+    {
+        // %LOCALAPPDATA%\Programs\cursor\... — the exact tree BitBroom must never recycle
+        // from, on ANY manual surface (Duplicates, Empty folders, Analyzer). It lives inside
+        // the profile, so without the installed-app guard it would be wrongly allowed.
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string cursorFile = System.IO.Path.Combine(localAppData, "Programs", "cursor", "resources", "app", "out", "main.js");
+        Assert.False(ManualDeleteGuard.CanDelete(cursorFile));
+
+        string reason = ManualDeleteGuard.Validate(cursorFile)!;
+        Assert.Contains("installed application", reason);
+    }
+
+    [Fact]
+    public void Refuses_files_inside_an_electron_app_tree_anywhere()
+    {
+        using var sandbox = new TestSandbox();
+        // A portable Electron app on a data drive / Desktop — no fixed install prefix,
+        // identified purely by its runtime marker beside the exe.
+        sandbox.CreateFile(@"PortableApp\icudtl.dat", 10);
+        sandbox.CreateFile(@"PortableApp\resources\app\node_modules\dep\index.js", 100);
+
+        string victim = System.IO.Path.Combine(sandbox.Root, @"PortableApp\resources\app\node_modules");
+        Assert.False(ManualDeleteGuard.CanDelete(victim));
+    }
+
+    [Fact]
+    public void Still_allows_a_normal_dependency_folder_in_a_workspace()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateFile(@"Work\myapp\package.json", 10);
+        sandbox.CreateFile(@"Work\myapp\node_modules\dep\index.js", 100);
+
+        string ok = System.IO.Path.Combine(sandbox.Root, @"Work\myapp\node_modules");
+        Assert.True(ManualDeleteGuard.CanDelete(ok));
+    }
+
+    [Fact]
     public void Allows_ordinary_folders_on_any_drive()
     {
         Assert.True(ManualDeleteGuard.CanDelete(@"D:\Projects\old-build"));

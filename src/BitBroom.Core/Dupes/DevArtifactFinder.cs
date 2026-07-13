@@ -76,7 +76,7 @@ public sealed class DevArtifactFinder
         new(".venv", "Python virtualenv", DirHasPyvenv),
         new("venv", "Python virtualenv", DirHasPyvenv),
         new("env", "Python virtualenv", DirHasPyvenv),
-        new("__pycache__", "Python bytecode cache", _ => true),
+        new("__pycache__", "Python bytecode cache", ParentHasPySource),
         new("target", "Rust/Maven build output", p => ParentHas(p, "Cargo.toml", "pom.xml")),
         new("dist", "JS build output", p => ParentHas(p, "package.json")),
         new("build", "JS build output", p => ParentHas(p, "package.json")),
@@ -91,6 +91,24 @@ public sealed class DevArtifactFinder
 
     /// <summary>Placeholder qualifier for venv rules; the real check is pyvenv.cfg in MatchRule.</summary>
     private static bool DirHasPyvenv(string parentOfVenv) => true;
+
+    /// <summary>
+    /// __pycache__ is only safe to delete when its parent still holds the .py source it was
+    /// compiled from — Python regenerates the bytecode on next import. Some apps ship
+    /// .pyc-only (no source) to obfuscate; deleting that __pycache__ would remove the only
+    /// copy of the code, so a source-less __pycache__ is never flagged.
+    /// </summary>
+    private static bool ParentHasPySource(string parent)
+    {
+        try
+        {
+            return new DirectoryInfo(parent).EnumerateFiles("*.py").Any();
+        }
+        catch (Exception)
+        {
+            return false; // unreadable → don't flag
+        }
+    }
 
     public Task<DevArtifactScanResult> ScanAsync(
         string rootPath,
@@ -263,21 +281,12 @@ public sealed class DevArtifactFinder
         return [.. roots.Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
-    /// <summary>File names that mark a directory tree as an installed/deployed application.</summary>
-    private static readonly string[] RuntimeMarkerFiles =
-    [
-        "icudtl.dat",                // Electron runtime data — sits next to the app exe
-        "v8_context_snapshot.bin",   // Electron/Chromium snapshot
-        "Update.exe",                // Squirrel.Windows installer stub (Discord, Slack, …)
-        "chrome_100_percent.pak",    // Chromium resources
-    ];
-
     /// <summary>
     /// True when the path belongs to installed/deployed software rather than a development
     /// workspace: anywhere under AppData / Program Files / ProgramData / Windows, inside a
     /// dot-directory directly under the user profile (.cursor, .vscode, .nuget, …), or in a
-    /// tree whose ancestors carry app-runtime markers (Electron/Squirrel files, *.asar).
-    /// Fails closed on I/O errors.
+    /// tree whose ancestors carry app-runtime markers (delegated to <see cref="RuntimeAppGuard"/>,
+    /// which every deletion surface shares). Fails closed on I/O errors.
     /// </summary>
     public static bool IsRuntimeAppLocation(string path)
     {
@@ -314,38 +323,9 @@ public sealed class DevArtifactFinder
                 }
             }
 
-            // Ancestor walk: an Electron/Squirrel/portable app anywhere (Desktop, D:\Apps…)
-            // reveals itself by runtime files next to or above the "project".
-            var ancestor = new DirectoryInfo(full).Parent;
-            for (int depth = 0; ancestor is not null && depth < 48; depth++, ancestor = ancestor.Parent)
-            {
-                if (!ancestor.Exists)
-                {
-                    continue; // non-existent is not evidence either way
-                }
-
-                foreach (string marker in RuntimeMarkerFiles)
-                {
-                    if (File.Exists(Path.Combine(ancestor.FullName, marker)))
-                    {
-                        return true;
-                    }
-                }
-
-                try
-                {
-                    if (ancestor.EnumerateFiles("*.asar").Any())
-                    {
-                        return true;
-                    }
-                }
-                catch (Exception)
-                {
-                    return true; // unreadable ancestor — fail closed
-                }
-            }
-
-            return false;
+            // Electron/Squirrel/portable app anywhere (Desktop, D:\Apps…): the shared guard
+            // walks parents for runtime markers (icudtl.dat, Update.exe, *.asar…).
+            return RuntimeAppGuard.IsInAppRuntimeTree(full);
         }
         catch (Exception)
         {
@@ -403,26 +383,8 @@ public sealed class DevArtifactFinder
     private static bool IsUnderTemp(string full) =>
         string.Equals(full, TempRoot, StringComparison.OrdinalIgnoreCase) || IsUnder(full, TempRoot);
 
-    /// <summary>True when the directory itself contains app-runtime marker files.</summary>
-    private static bool DirectoryHasRuntimeMarkers(string dir)
-    {
-        try
-        {
-            foreach (string marker in RuntimeMarkerFiles)
-            {
-                if (File.Exists(Path.Combine(dir, marker)))
-                {
-                    return true;
-                }
-            }
-
-            return new DirectoryInfo(dir).EnumerateFiles("*.asar").Any();
-        }
-        catch (Exception)
-        {
-            return true; // unreadable — fail closed
-        }
-    }
+    /// <summary>True when the directory itself contains app-runtime marker files (shared guard).</summary>
+    private static bool DirectoryHasRuntimeMarkers(string dir) => RuntimeAppGuard.DirectoryHasMarkers(dir);
 
     private static Rule? MatchRule(DirectoryInfo dir)
     {

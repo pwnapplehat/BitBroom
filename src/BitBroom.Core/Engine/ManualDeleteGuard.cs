@@ -84,6 +84,17 @@ public static class ManualDeleteGuard
             return "it is a drive root";
         }
 
+        // Installed applications look exactly like user data / dev projects (an Electron app
+        // is package.json + out + node_modules; a Squirrel app is Update.exe + versioned
+        // folders). Recycling a file from an app's own install tree breaks the app — and a
+        // duplicate/empty-folder/Analyzer click could otherwise reach one under
+        // %LOCALAPPDATA%\Programs or any marker-bearing tree. Refuse those before the
+        // profile allowance below opens AppData up.
+        if (RuntimeAppGuard.IsInstalledApp(normalized))
+        {
+            return "it is inside an installed application";
+        }
+
         // Content strictly inside the user's own profile (Downloads, Documents, AppData…)
         // is the user's to recycle — allowed even though the profile sits under the Users
         // root. The profile root itself is NOT allowed (it falls through to the loop).

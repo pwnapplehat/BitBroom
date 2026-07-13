@@ -3,6 +3,28 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.3] — 2026-07-13
+
+### Fixed (safety — hardening the whole class, not just Dev junk)
+- Generalized the v1.2.2 "installed apps look like dev projects" fix into a single shared
+  **`RuntimeAppGuard`** now consulted by **every** manual/heuristic deletion surface —
+  the duplicate finder, the empty-folder finder, and the Analyzer's manual recycle — not
+  just Dev junk. Previously those three only refused Windows / Program Files / ProgramData /
+  drive roots via `ManualDeleteGuard`; because they *allow* content inside your profile
+  (so you can clear caches and downloads), a per-user installed app under
+  `%LOCALAPPDATA%\Programs` (Cursor, VS Code user setup…) or a Squirrel app under
+  `%LOCALAPPDATA%` (Discord, Slack…) could be reached — e.g. a duplicate DLL/asset inside
+  an app, or an empty folder the app needs. They now all refuse installed-app trees
+  (per-user program installs, and any tree carrying Electron/Squirrel/`.asar` markers,
+  detected by walking parent folders).
+- **`__pycache__`** is now only offered when its parent still contains `.py` source. Some
+  tools ship `.pyc`-only (source stripped); deleting that cache would remove the only copy
+  of the code, so a source-less `__pycache__` is never flagged.
+- Refactored the Dev-junk finder to delegate marker detection to the shared guard (one
+  source of truth), and added cross-surface regression tests (duplicate-inside-app,
+  empty-folder-inside-app, per-user program install, portable Electron tree, `.pyc`-only).
+  132 tests pass.
+
 ## [1.2.2] — 2026-07-13
 
 ### Fixed (important — Dev junk safety)
