@@ -153,8 +153,20 @@
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
 
-      <!-- ══════════ Title bar (native Fluent chrome over the acrylic backdrop) ══════════ -->
-      <ui:TitleBar Grid.Row="0" Title="BitBroom" Icon="{ui:ImageIcon 'pack://application:,,,/Assets/icon.ico'}"/>
+      <!-- ══════════ Title bar (native Fluent chrome over the acrylic backdrop) ══════════
+           Icon + name rendered as custom Header: the stock TitleBar template hardcodes
+           the icon presenter to 16px, which looked tiny next to the wordmark. -->
+      <ui:TitleBar Grid.Row="0">
+        <ui:TitleBar.Header>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+            <Image Source="pack://application:,,,/Assets/icon.png" Width="24" Height="24"
+                   VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"
+                   UseLayoutRounding="True" SnapsToDevicePixels="True"/>
+            <TextBlock Text="BitBroom" FontSize="12" VerticalAlignment="Center" Margin="10,0,0,0"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+          </StackPanel>
+        </ui:TitleBar.Header>
+      </ui:TitleBar>
 
       <!-- ══════════ Elevation banner ══════════ -->
       <Grid Grid.Row="1" Margin="12,0,12,6"

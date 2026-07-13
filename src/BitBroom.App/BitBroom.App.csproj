@@ -19,6 +19,12 @@
     <Resource Include="..\..\assets\icon.ico" Link="Assets\icon.ico" />
   </ItemGroup>
 
+  <!-- High-res master for in-app rendering: WPF only decodes a single (usually small)
+       frame from an .ico, which upscales blurry; the PNG downscales crisply. -->
+  <ItemGroup Condition="Exists('..\..\assets\icon.png')">
+    <Resource Include="..\..\assets\icon.png" Link="Assets\icon.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
