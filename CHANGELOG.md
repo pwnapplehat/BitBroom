@@ -3,6 +3,20 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.1.1] — 2026-07-13
+
+### Fixed
+- **Safety: the Disk Analyzer's per-row recycle now goes through a guard.** It previously
+  called the shell delete directly and showed a delete icon next to protected locations
+  (Windows, Program Files, ProgramData, the Users root, drive-root system files). A new
+  shared `ManualDeleteGuard` refuses those for both the Analyzer and Duplicates tabs, and
+  the delete icon is hidden for any non-deletable row. Content inside your own profile
+  stays deletable.
+
+### Changed
+- Roomier default window (1400×910, up from 1280×820), clamped to the monitor work area so
+  it still fits smaller laptop screens.
+
 ## [1.1.0] — 2026-07-13
 
 The "world-class" feature release, driven by a competitive research pass across
