@@ -113,7 +113,9 @@
           </Grid.RowDefinitions>
           <TextBlock Grid.Row="0" Text="LARGEST FILES" Style="{StaticResource Text.Section}" Margin="8,4,0,8"/>
           <ListBox Grid.Row="1" ItemsSource="{Binding LargestFiles}"
-                   ScrollViewer.CanContentScroll="False"
+                   ScrollViewer.CanContentScroll="True"
+                   VirtualizingPanel.ScrollUnit="Pixel"
+                   VirtualizingPanel.VirtualizationMode="Recycling"
                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                    Background="Transparent" BorderThickness="0"
                    ItemContainerStyle="{StaticResource BareListBoxItem}"

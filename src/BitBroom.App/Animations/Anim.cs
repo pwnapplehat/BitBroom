@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -22,6 +23,96 @@ public enum TransitionMode
 /// </summary>
 public static class Anim
 {
+    // =========================================================================
+    // Display refresh rate — WPF ticks animations at 60fps by default, which looks
+    // subtly choppy on high-refresh monitors (120/144/180Hz). Every animation this
+    // toolkit creates asks for the panel's real refresh rate instead.
+    // =========================================================================
+
+    private static int _displayRefreshRate;
+
+    /// <summary>Primary display refresh rate in Hz (clamped 60–240; 60 on failure).</summary>
+    public static int DisplayRefreshRate
+    {
+        get
+        {
+            if (_displayRefreshRate == 0)
+            {
+                _displayRefreshRate = QueryDisplayRefreshRate();
+            }
+
+            return _displayRefreshRate;
+        }
+    }
+
+    private static int QueryDisplayRefreshRate()
+    {
+        try
+        {
+            var mode = default(DEVMODE);
+            mode.dmSize = (ushort)Marshal.SizeOf<DEVMODE>();
+            const int ENUM_CURRENT_SETTINGS = -1;
+            if (EnumDisplaySettings(null, ENUM_CURRENT_SETTINGS, ref mode) && mode.dmDisplayFrequency >= 60)
+            {
+                return Math.Min((int)mode.dmDisplayFrequency, 240);
+            }
+        }
+        catch (Exception)
+        {
+            // Fall through to the WPF default.
+        }
+
+        return 60;
+    }
+
+    /// <summary>Applies the display-matched frame rate to an animation/storyboard.</summary>
+    public static T AtDisplayRate<T>(T timeline)
+        where T : Timeline
+    {
+        Timeline.SetDesiredFrameRate(timeline, DisplayRefreshRate);
+        return timeline;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool EnumDisplaySettings(string? deviceName, int modeNum, ref DEVMODE devMode);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct DEVMODE
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmDeviceName;
+        public ushort dmSpecVersion;
+        public ushort dmDriverVersion;
+        public ushort dmSize;
+        public ushort dmDriverExtra;
+        public uint dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public uint dmDisplayOrientation;
+        public uint dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string dmFormName;
+        public ushort dmLogPixels;
+        public uint dmBitsPerPel;
+        public uint dmPelsWidth;
+        public uint dmPelsHeight;
+        public uint dmDisplayFlags;
+        public uint dmDisplayFrequency;
+        public uint dmICMMethod;
+        public uint dmICMIntent;
+        public uint dmMediaType;
+        public uint dmDitherType;
+        public uint dmReserved1;
+        public uint dmReserved2;
+        public uint dmPanningWidth;
+        public uint dmPanningHeight;
+    }
+
     // =========================================================================
     // Transition — plays every time the element becomes visible.
     // =========================================================================
@@ -51,10 +142,10 @@ public static class Anim
 
     public static void Play(FrameworkElement element, TransitionMode mode)
     {
-        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+        var fade = AtDisplayRate(new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-        };
+        });
         element.BeginAnimation(UIElement.OpacityProperty, fade);
 
         switch (mode)
@@ -62,10 +153,10 @@ public static class Anim
             case TransitionMode.SlideFade:
             {
                 TranslateTransform translate = EnsureTranslate(element);
-                var slide = new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(340))
+                var slide = AtDisplayRate(new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(340))
                 {
                     EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut },
-                };
+                });
                 translate.BeginAnimation(TranslateTransform.YProperty, slide);
                 break;
             }
@@ -73,10 +164,10 @@ public static class Anim
             case TransitionMode.ZoomFade:
             {
                 ScaleTransform scale = EnsureScale(element);
-                var zoom = new DoubleAnimation(0.94, 1, TimeSpan.FromMilliseconds(280))
+                var zoom = AtDisplayRate(new DoubleAnimation(0.94, 1, TimeSpan.FromMilliseconds(280))
                 {
                     EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.35 },
-                };
+                });
                 scale.BeginAnimation(ScaleTransform.ScaleXProperty, zoom);
                 scale.BeginAnimation(ScaleTransform.ScaleYProperty, zoom);
                 break;
@@ -126,6 +217,14 @@ public static class Anim
     private static readonly DependencyProperty StaggeredProperty = DependencyProperty.RegisterAttached(
         "Staggered", typeof(bool), typeof(Anim), new PropertyMetadata(false));
 
+    /// <summary>
+    /// End of the reveal window (UTC ticks). Containers realized after it — i.e. rows a
+    /// virtualizing panel creates while the user scrolls — appear instantly instead of
+    /// fading in mid-scroll.
+    /// </summary>
+    private static readonly DependencyProperty StaggerDeadlineProperty = DependencyProperty.RegisterAttached(
+        "StaggerDeadline", typeof(long), typeof(Anim), new PropertyMetadata(0L));
+
     private static void OnStaggerChildrenChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not ItemsControl itemsControl || e.NewValue is not true)
@@ -133,8 +232,22 @@ public static class Anim
             return;
         }
 
-        itemsControl.ItemContainerGenerator.StatusChanged += (_, _) => StaggerNewContainers(itemsControl);
+        void OpenRevealWindow() => itemsControl.SetValue(
+            StaggerDeadlineProperty, DateTime.UtcNow.AddMilliseconds(900).Ticks);
+
+        OpenRevealWindow();
         itemsControl.Loaded += (_, _) => StaggerNewContainers(itemsControl);
+        itemsControl.ItemContainerGenerator.StatusChanged += (_, _) => StaggerNewContainers(itemsControl);
+        itemsControl.ItemContainerGenerator.ItemsChanged += (_, args) =>
+        {
+            // Fresh content (new scan/analysis or initial population) re-opens the
+            // reveal window; containers realized by scrolling do not.
+            if (args.Action is System.Collections.Specialized.NotifyCollectionChangedAction.Reset
+                or System.Collections.Specialized.NotifyCollectionChangedAction.Add)
+            {
+                OpenRevealWindow();
+            }
+        };
     }
 
     private static void StaggerNewContainers(ItemsControl itemsControl)
@@ -143,6 +256,8 @@ public static class Anim
         {
             return;
         }
+
+        bool animate = DateTime.UtcNow.Ticks <= (long)itemsControl.GetValue(StaggerDeadlineProperty);
 
         int batchIndex = 0;
         for (int i = 0; i < itemsControl.Items.Count; i++)
@@ -158,22 +273,27 @@ public static class Anim
             }
 
             container.SetValue(StaggeredProperty, true);
+            if (!animate)
+            {
+                continue;
+            }
+
             double delay = Math.Min(batchIndex * 38, 460);
             batchIndex++;
 
             container.Opacity = 0;
             TranslateTransform translate = EnsureTranslate(container);
 
-            var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
+            var fade = AtDisplayRate(new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
             {
                 BeginTime = TimeSpan.FromMilliseconds(delay),
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-            };
-            var slide = new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(320))
+            });
+            var slide = AtDisplayRate(new DoubleAnimation(12, 0, TimeSpan.FromMilliseconds(320))
             {
                 BeginTime = TimeSpan.FromMilliseconds(delay),
                 EasingFunction = new QuinticEase { EasingMode = EasingMode.EaseOut },
-            };
+            });
 
             container.BeginAnimation(UIElement.OpacityProperty, fade);
             translate.BeginAnimation(TranslateTransform.YProperty, slide);
@@ -207,11 +327,11 @@ public static class Anim
             }
 
             // FillBehavior.Stop hands control back to the binding when done.
-            var ramp = new DoubleAnimation(0, target, TimeSpan.FromMilliseconds(750))
+            var ramp = AtDisplayRate(new DoubleAnimation(0, target, TimeSpan.FromMilliseconds(750))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
                 FillBehavior = FillBehavior.Stop,
-            };
+            });
             rangeBase.BeginAnimation(RangeBase.ValueProperty, ramp);
         };
     }
@@ -288,10 +408,10 @@ public static class Anim
             double target = Math.Clamp(current - e.Delta, 0, sv.ScrollableHeight);
             sv.SetValue(ScrollTargetProperty, target);
 
-            var glide = new DoubleAnimation(sv.VerticalOffset, target, TimeSpan.FromMilliseconds(280))
+            var glide = AtDisplayRate(new DoubleAnimation(sv.VerticalOffset, target, TimeSpan.FromMilliseconds(280))
             {
                 EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-            };
+            });
             glide.Completed += (_, _) => sv.SetValue(ScrollTargetProperty, double.NaN);
             sv.BeginAnimation(SmoothOffsetProperty, glide);
         };

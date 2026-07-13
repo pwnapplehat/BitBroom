@@ -50,9 +50,14 @@
 
       <!-- Category list -->
       <ui:Card Grid.Row="2" Padding="6" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
+        <!-- Pixel-unit virtualization: pixel-accurate scrolling like CanContentScroll=False,
+             but off-screen rows are virtualized so scroll frames stay cheap. -->
         <ListBox ItemsSource="{Binding GroupedCategories}" ScrollViewer.VerticalScrollBarVisibility="Auto"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                 ScrollViewer.CanContentScroll="False"
+                 ScrollViewer.CanContentScroll="True"
+                 VirtualizingPanel.ScrollUnit="Pixel"
+                 VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling"
                  Background="Transparent" BorderThickness="0"
                  ItemContainerStyle="{StaticResource BareListBoxItem}"
                  anim:Anim.SmoothScroll="True"
