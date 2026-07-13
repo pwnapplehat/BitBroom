@@ -104,4 +104,15 @@ public sealed class SettingsViewModel : ObservableObject
             OnPropertyChanged();
         }
     }
+
+    public bool PlayStartupSound
+    {
+        get => _settings.PlayStartupSound;
+        set
+        {
+            _settings.PlayStartupSound = value;
+            _settings.Save();
+            OnPropertyChanged();
+        }
+    }
 }

@@ -131,12 +131,44 @@ public partial class MainWindow : FluentWindow
                 Splash.Visibility = Visibility.Collapsed;
             };
             intro.Begin(this);
+
+            if (DataContext is MainViewModel { PlayStartupSound: true })
+            {
+                PlayStartupSound();
+            }
         }
         catch (Exception)
         {
             // The intro is decorative — never let it block the app.
             Shell.Opacity = 1;
             Splash.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>Plays the broom-sweep intro sound, timed to the splash animation.</summary>
+    private static void PlayStartupSound()
+    {
+        try
+        {
+            var resource = Application.GetResourceStream(
+                new Uri("pack://application:,,,/Assets/sounds/startup.wav"));
+            if (resource is null)
+            {
+                return;
+            }
+
+            var player = new System.Media.SoundPlayer(resource.Stream);
+            // Async play; keep the player (and its stream) alive until it finishes.
+            player.Play();
+            _ = Task.Delay(TimeSpan.FromSeconds(3)).ContinueWith(_ =>
+            {
+                player.Dispose();
+                resource.Stream.Dispose();
+            });
+        }
+        catch (Exception)
+        {
+            // Sound is a garnish — any audio failure must never affect startup.
         }
     }
 }

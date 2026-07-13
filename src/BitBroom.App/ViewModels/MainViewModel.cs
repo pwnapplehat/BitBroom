@@ -38,6 +38,9 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Raised when a view model wants the shell to switch tabs (index into the nav order).</summary>
     public event Action<int>? NavigateRequested;
 
+    /// <summary>Whether the splash intro should play its sweep sound (Settings toggle).</summary>
+    public bool PlayStartupSound => _settings.PlayStartupSound;
+
     public MainViewModel()
     {
         _settings = AppSettings.Load();

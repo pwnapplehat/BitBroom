@@ -63,6 +63,18 @@
         </StackPanel>
       </ui:Card>
 
+      <TextBlock Text="APPEARANCE &amp; SOUND" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <Grid>
+          <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+            <TextBlock Text="Startup sound" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+            <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                       Text="Play the short broom-sweep chime with the startup animation."/>
+          </StackPanel>
+          <ui:ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center" IsChecked="{Binding PlayStartupSound}"/>
+        </Grid>
+      </ui:Card>
+
       <TextBlock Text="LOGS &amp; DATA" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
       <ui:Card>
         <StackPanel>

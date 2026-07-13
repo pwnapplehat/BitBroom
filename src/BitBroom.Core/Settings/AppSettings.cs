@@ -24,6 +24,9 @@ public sealed class AppSettings
     /// <summary>Ask for confirmation before every clean.</summary>
     public bool ConfirmBeforeClean { get; set; } = true;
 
+    /// <summary>Play the short broom-sweep sound with the startup splash animation.</summary>
+    public bool PlayStartupSound { get; set; } = true;
+
     /// <summary>Per-category enabled/disabled overrides chosen by the user (persisted between runs).</summary>
     public Dictionary<string, bool> CategorySelections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

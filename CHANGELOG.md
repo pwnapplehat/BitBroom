@@ -16,6 +16,8 @@ All notable changes to BitBroom are documented here. Format follows
 - Views are cached across tab switches (scroll positions and in-flight scans survive).
 - Kept: the branded splash intro, page transitions, staggered reveals, shimmer progress,
   smooth scrolling, brand accent (#38BDF8) and the Display-cut typography.
+- Splash intro is centered and plays a synthesized broom-sweep chime (whoosh + three
+  "bit" sparkles matching the animation); toggleable in Settings → Appearance & sound.
 - Removed the now-redundant hand-rolled chrome (caption buttons, nav rail, control
   templates, DWM interop).
 

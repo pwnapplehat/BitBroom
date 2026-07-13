@@ -256,10 +256,13 @@
     <!-- ══════════ Startup splash overlay ══════════ -->
     <Grid x:Name="Splash" Background="{StaticResource Brush.Bg}">
       <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-        <Grid x:Name="SplashLogo" Width="220" Height="120" Opacity="0">
+        <!-- Grid width 128 ≈ 2 × the broom glyph's visual center (32 + 64/2), so the
+             broom sits exactly on the window's center line; the bits fly off to the
+             right as transient debris and deliberately overflow the grid. -->
+        <Grid x:Name="SplashLogo" Width="128" Height="120" Opacity="0">
           <TextBlock Text="&#xEA99;" FontFamily="{StaticResource Font.Icons}" FontSize="64"
                      Foreground="{StaticResource Brush.Accent}"
-                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="30,0,0,0"
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="32,0,0,0"
                      RenderTransformOrigin="0.25,0.85">
             <TextBlock.RenderTransform>
               <RotateTransform x:Name="SplashRotate" Angle="-26"/>
@@ -267,21 +270,21 @@
           </TextBlock>
           <Rectangle x:Name="Bit1" Width="9" Height="9" RadiusX="2" RadiusY="2"
                      Fill="{StaticResource Brush.Accent}" Opacity="0"
-                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="96,-14,0,0">
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="98,-14,0,0">
             <Rectangle.RenderTransform>
               <TranslateTransform x:Name="Bit1Move"/>
             </Rectangle.RenderTransform>
           </Rectangle>
           <Rectangle x:Name="Bit2" Width="7" Height="7" RadiusX="2" RadiusY="2"
                      Fill="{StaticResource Brush.Success}" Opacity="0"
-                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="92,10,0,0">
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="94,10,0,0">
             <Rectangle.RenderTransform>
               <TranslateTransform x:Name="Bit2Move"/>
             </Rectangle.RenderTransform>
           </Rectangle>
           <Rectangle x:Name="Bit3" Width="6" Height="6" RadiusX="1.5" RadiusY="1.5"
                      Fill="#22D3EE" Opacity="0"
-                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="100,-2,0,0">
+                     HorizontalAlignment="Left" VerticalAlignment="Center" Margin="102,-2,0,0">
             <Rectangle.RenderTransform>
               <TranslateTransform x:Name="Bit3Move"/>
             </Rectangle.RenderTransform>

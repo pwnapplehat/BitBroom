@@ -25,6 +25,10 @@
     <Resource Include="..\..\assets\icon.png" Link="Assets\icon.png" />
   </ItemGroup>
 
+  <ItemGroup Condition="Exists('..\..\assets\sounds\startup.wav')">
+    <Resource Include="..\..\assets\sounds\startup.wav" Link="Assets\sounds\startup.wav" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
   </ItemGroup>
