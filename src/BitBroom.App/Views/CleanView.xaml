@@ -49,7 +49,7 @@
       </StackPanel>
 
       <!-- Category list -->
-      <ui:Card Grid.Row="2" Padding="6" VerticalContentAlignment="Stretch">
+      <ui:Card Grid.Row="2" Padding="6" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
         <ListBox ItemsSource="{Binding GroupedCategories}" ScrollViewer.VerticalScrollBarVisibility="Auto"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  ScrollViewer.CanContentScroll="False"

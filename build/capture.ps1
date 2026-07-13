@@ -52,7 +52,9 @@ Start-Sleep -Seconds $WaitSeconds
 # The splash window may have been the handle we grabbed; it is destroyed once the
 # main window shows. Re-acquire the current main window handle before capturing.
 $proc.Refresh()
-if ($proc.MainWindowHandle -ne [IntPtr]::Zero) { $hwnd = $proc.MainWindowHandle }
+if ($proc.HasExited) { Write-Error "app exited (code $($proc.ExitCode)) before capture"; exit 1 }
+$newHwnd = $proc.MainWindowHandle
+if ($newHwnd -and $newHwnd -ne [IntPtr]::Zero) { $hwnd = $newHwnd }
 [DpiHelper]::keybd_event(0x12, 0, 0, [UIntPtr]::Zero)
 [DpiHelper]::SetForegroundWindow($hwnd) | Out-Null
 [DpiHelper]::keybd_event(0x12, 0, 2, [UIntPtr]::Zero)

@@ -46,13 +46,15 @@
     <!-- Results -->
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="3*"/>
-        <ColumnDefinition Width="12"/>
-        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="11*"/>
+        <ColumnDefinition Width="14"/>
+        <ColumnDefinition Width="9*"/>
       </Grid.ColumnDefinitions>
 
-      <!-- Folder tree -->
-      <ui:Card Grid.Column="0" Padding="8" VerticalContentAlignment="Stretch">
+      <!-- Folder tree. WPF UI's Card defaults to VerticalAlignment=Center, which made
+           this card hug its content and float mid-row; stretch keeps both cards
+           top-aligned and full height. -->
+      <ui:Card Grid.Column="0" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -103,7 +105,7 @@
       </ui:Card>
 
       <!-- Largest files -->
-      <ui:Card Grid.Column="2" Padding="8" VerticalContentAlignment="Stretch">
+      <ui:Card Grid.Column="2" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -119,7 +121,7 @@
                    anim:Anim.StaggerChildren="True">
             <ListBox.ItemTemplate>
               <DataTemplate>
-                <Border CornerRadius="5" Padding="8,6" Margin="2,1" Background="Transparent">
+                <Border CornerRadius="5" Padding="8,6" Margin="2,1,8,1" Background="Transparent">
                   <Grid>
                     <Grid.ColumnDefinitions>
                       <ColumnDefinition Width="*"/>

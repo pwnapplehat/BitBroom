@@ -65,7 +65,7 @@
       </ui:Button>
     </WrapPanel>
 
-    <ui:Card Grid.Row="2" Padding="4" Margin="0,6,0,0" VerticalContentAlignment="Stretch">
+    <ui:Card Grid.Row="2" Padding="4" Margin="0,6,0,0" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
       <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto">
         <TextBox Text="{Binding ConsoleText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
                  FontFamily="Cascadia Mono, Consolas" FontSize="12"
