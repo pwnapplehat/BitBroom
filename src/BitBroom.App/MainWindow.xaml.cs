@@ -16,6 +16,7 @@ public partial class MainWindow : FluentWindow
     [
         typeof(DashboardView),
         typeof(CleanView),
+        typeof(DupesView),
         typeof(AnalyzerView),
         typeof(HogsView),
         typeof(ToolsView),
@@ -49,10 +50,13 @@ public partial class MainWindow : FluentWindow
                         viewModel.Clean.ScanCommand.Execute(null);
                         break;
                     case 2:
+                        viewModel.Dupes.ScanCommand.Execute(null);
+                        break;
+                    case 3:
                         viewModel.Analyzer.TargetPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                         viewModel.Analyzer.AnalyzeCommand.Execute(null);
                         break;
-                    case 3:
+                    case 4:
                         viewModel.Hogs.InspectCommand.Execute(null);
                         break;
                 }

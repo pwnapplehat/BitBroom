@@ -35,14 +35,17 @@ treats your data like it's radioactive, and that tells you the truth.**
 
 | | |
 |---|---|
-| **Clean** | 48 research-backed categories: Windows temp & update caches, crash dumps & kernel reports, Windows Error Reporting, Defender logs, thumbnail caches, browser caches (Chrome/Edge/Brave/Firefox/Opera/Vivaldi), Discord/Slack/Teams/Spotify/Adobe caches, NVIDIA/AMD/Intel shader caches, Steam/Epic/EA caches, npm/pip/uv/NuGet/Gradle/Maven dev caches, and more. |
-| **Disk Analyzer** | "Where did my space go?" — parallel folder-size treeview plus the 100 largest files, with open-in-Explorer and recycle actions. |
+| **Clean** | 60 research-backed categories: Windows temp & update caches, crash dumps & kernel reports, Windows Error Reporting, Defender logs, thumbnail caches, browser caches (Chrome/Edge/Brave/Firefox/Opera/Vivaldi), Discord/Slack/Teams/Zoom/Spotify/Adobe/OBS caches, Apple device updates (IPSW), NVIDIA/AMD/Intel shader caches, Steam/Epic/EA/Battle.net/Ubisoft caches, Unity/Unreal engine caches, npm/pip/uv/NuGet/cargo/Go/Gradle/Maven dev caches, OneDrive/Docker logs — plus your own **custom folders** with per-folder age limits. |
+| **Duplicates** | Content-verified duplicate finder (size → head hash → full SHA-256, so it never lies about a match) and an empty-folder finder. Recycle Bin-only deletion, and one copy of every group always survives — enforced in the engine, not just the UI. |
+| **Disk Analyzer** | "Where did my space go?" — parallel folder-size treeview, the 100 largest files, a by-file-type breakdown, CSV export, and open-in-Explorer / recycle actions. |
 | **Space Hogs** | Report-only detector for the big hidden consumers: `hiberfil.sys`, page files, WSL/Docker `.vhdx` disks, System Restore usage, the Windows Search index, the WinSxS component store, DriverStore, Windows Installer cache, oversized Outlook OSTs, the Downloads folder, the `CapabilityAccessManager.db-wal` Windows bug — each with the safe, supported fix explained. |
 | **Tools** | One-click supported maintenance: DISM component-store cleanup & analysis, hibernation off/reduced/on, DNS flush, Explorer restart, System Restore usage. Official Windows mechanisms only, output streamed live. |
-| **CLI** | `bitbroom-cli` — scan/clean/hogs/analyze with `--dry-run`, `--json`, exit codes for scripting and Task Scheduler. |
+| **CLI** | `bitbroom-cli` — scan/clean/hogs/analyze/dupes with `--dry-run`, `--json`, exit codes for scripting. |
+| **Automation** | Scheduled cleaning of the safe default set via Windows Task Scheduler (Settings → Scheduled cleaning — free, no Pro tier). Per-folder **exclusions** are enforced engine-deep, and an optional **Recycle Bin mode** gives every clean an undo window. |
 | **Native look** | Windows 11 Fluent design end-to-end: acrylic wallpaper-blur backdrop (taskbar-style), native NavigationView, Fluent controls and title bar via the MIT-licensed [WPF UI](https://github.com/lepoco/wpfui) library — plus a branded startup animation, page transitions, staggered reveals, shimmer progress and inertial smooth scrolling. |
 
 <div align="center">
+<img src="assets/screenshots/dupes.png" width="800" alt="Duplicates tab"/>
 <img src="assets/screenshots/hogs.png" width="800" alt="Space Hogs tab"/>
 <img src="assets/screenshots/analyzer.png" width="800" alt="Disk Analyzer tab"/>
 </div>
@@ -100,7 +103,8 @@ bitbroom-cli clean --dry-run                         # full preview: logs everyt
 bitbroom-cli clean --yes                             # clean the default set
 bitbroom-cli clean --categories user-temp,nvidia-caches --yes
 bitbroom-cli hogs                                    # hidden space-consumer report
-bitbroom-cli analyze D:\ --depth 3 --top 50          # folder size breakdown
+bitbroom-cli analyze D:\ --depth 3 --top 50          # folder size breakdown + file types
+bitbroom-cli dupes D:\Photos --min-size 5            # content-verified duplicate report
 bitbroom-cli scan --json                             # machine-readable everything
 ```
 
@@ -118,12 +122,16 @@ Documented with sources in [docs/CATEGORIES.md](docs/CATEGORIES.md#deliberately-
 - ❌ "Free RAM" / "boost gaming" / other placebo buttons
 - ❌ DISM `/ResetBase` (permanently removes update rollback — not worth it)
 - ❌ Secure-wipe of cleaned files (pointless on SSDs, punishing on any drive)
+- ❌ winapp2.ini imports (thousands of unvetted third-party delete rules would bypass the
+  tested guard model — every BitBroom category is individually researched and test-gated)
+- ❌ Startup managers / uninstallers / driver updaters (Windows Settings does this natively;
+  suite-creep is how cleaners become the problem)
 
 ## Project layout
 
 ```
-src/BitBroom.Core/    engine: PathGuard, walker, SafeDeleter, rules, catalog, analyzer, hogs
-                      (zero third-party dependencies)
+src/BitBroom.Core/    engine: PathGuard, walker, SafeDeleter, rules, catalog, analyzer,
+                      duplicate/empty-folder finders, hogs, scheduling (zero third-party deps)
 src/BitBroom.App/     WPF GUI — Windows 11 Fluent via WPF UI (MIT), acrylic backdrop
 src/BitBroom.Cli/     bitbroom-cli
 tests/                safety-critical test suite (junction canary & friends)

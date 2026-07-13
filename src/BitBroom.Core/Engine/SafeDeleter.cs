@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using BitBroom.Core.Logging;
+using BitBroom.Core.Native;
 
 namespace BitBroom.Core.Engine;
 
@@ -14,6 +15,19 @@ public enum DeleteOutcome
     Failed,
 }
 
+/// <summary>How the deleter disposes of files.</summary>
+public enum DeleteMode
+{
+    /// <summary>Log what would be deleted; touch nothing.</summary>
+    Simulate,
+
+    /// <summary>Send files to the Recycle Bin (restorable until the bin is emptied).</summary>
+    RecycleBin,
+
+    /// <summary>Delete permanently.</summary>
+    Permanent,
+}
+
 /// <summary>
 /// The only code path in BitBroom that deletes files for cleaning categories.
 /// Every deletion re-validates the path against its scanned root and re-reads
@@ -25,16 +39,31 @@ public sealed class SafeDeleter
     private const int ERROR_SHARING_VIOLATION = unchecked((int)0x80070020);
     private const int ERROR_LOCK_VIOLATION = unchecked((int)0x80070021);
 
+    // SHFileOperation result codes worth mapping (WinError/DE_* values).
+    private const int SH_ERROR_ACCESS_DENIED = 5;
+    private const int SH_ERROR_SHARING_VIOLATION = 32;
+    private const int SH_ERROR_FILE_NOT_FOUND = 2;
+    private const int SH_ERROR_PATH_NOT_FOUND = 3;
+
     private readonly PathGuard _guard;
     private readonly RunLogger _logger;
-    private readonly bool _simulate;
+    private readonly DeleteMode _mode;
+    private readonly ExclusionSet _exclusions;
 
     public SafeDeleter(PathGuard guard, RunLogger logger, bool simulate)
+        : this(guard, logger, simulate ? DeleteMode.Simulate : DeleteMode.Permanent, ExclusionSet.Empty)
+    {
+    }
+
+    public SafeDeleter(PathGuard guard, RunLogger logger, DeleteMode mode, ExclusionSet? exclusions = null)
     {
         _guard = guard;
         _logger = logger;
-        _simulate = simulate;
+        _mode = mode;
+        _exclusions = exclusions ?? ExclusionSet.Empty;
     }
+
+    private bool Simulating => _mode == DeleteMode.Simulate;
 
     public DeleteOutcome DeleteFile(in ScanItem item)
     {
@@ -42,6 +71,12 @@ public sealed class SafeDeleter
         if (rejection is not null)
         {
             _logger.Skipped(item.Path, $"guard:{rejection}");
+            return DeleteOutcome.GuardRejected;
+        }
+
+        if (_exclusions.Count > 0 && _exclusions.IsExcluded(item.Path))
+        {
+            _logger.Skipped(item.Path, "excluded");
             return DeleteOutcome.GuardRejected;
         }
 
@@ -76,10 +111,15 @@ public sealed class SafeDeleter
             return DeleteOutcome.GuardRejected;
         }
 
-        if (_simulate)
+        if (Simulating)
         {
             _logger.Deleted(item.Path, item.SizeBytes, simulated: true);
             return DeleteOutcome.Simulated;
+        }
+
+        if (_mode == DeleteMode.RecycleBin)
+        {
+            return RecycleFile(item, attributes);
         }
 
         try
@@ -134,13 +174,59 @@ public sealed class SafeDeleter
         }
     }
 
+    /// <summary>Sends one validated file to the Recycle Bin, mapping shell error codes.</summary>
+    private DeleteOutcome RecycleFile(in ScanItem item, FileAttributes attributes)
+    {
+        try
+        {
+            // The shell refuses read-only files in some code paths; normalize first
+            // (the file is going to the bin anyway, restore keeps content intact).
+            if ((attributes & FileAttributes.ReadOnly) != 0)
+            {
+                try
+                {
+                    File.SetAttributes(item.Path, FileAttributes.Normal);
+                }
+                catch (Exception)
+                {
+                    // Recycle may still succeed; fall through.
+                }
+            }
+
+            int code = NativeMethods.SendToRecycleBin(item.Path);
+            switch (code)
+            {
+                case 0:
+                    _logger.Recycled(item.Path, item.SizeBytes);
+                    return DeleteOutcome.Deleted;
+                case SH_ERROR_FILE_NOT_FOUND:
+                case SH_ERROR_PATH_NOT_FOUND:
+                    return DeleteOutcome.Missing;
+                case SH_ERROR_SHARING_VIOLATION:
+                    _logger.Skipped(item.Path, "in-use");
+                    return DeleteOutcome.Locked;
+                case SH_ERROR_ACCESS_DENIED:
+                    _logger.Skipped(item.Path, "denied");
+                    return DeleteOutcome.AccessDenied;
+                default:
+                    _logger.Skipped(item.Path, $"recycle:{code}");
+                    return DeleteOutcome.Failed;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"Unexpected error recycling {item.Path}: {ex.Message}");
+            return DeleteOutcome.Failed;
+        }
+    }
+
     /// <summary>
     /// Removes now-empty directories left behind after file deletion, deepest first.
     /// The rule root itself is never removed. Non-empty and in-use directories are ignored.
     /// </summary>
     public int RemoveEmptyDirectories(IReadOnlyList<string> directories, string rootPath)
     {
-        if (_simulate)
+        if (Simulating)
         {
             return 0;
         }

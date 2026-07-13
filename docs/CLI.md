@@ -48,11 +48,21 @@ bug). Each finding includes the supported remediation.
 \* restore-point usage needs an elevated terminal.
 
 ### `analyze <path>`
-Folder-size breakdown plus largest files.
+Folder-size breakdown, largest files, and a by-file-type summary.
 
 ```
 bitbroom-cli analyze C:\ --depth 2 --top 25
 bitbroom-cli analyze "D:\Projects" --json
+```
+
+### `dupes <path>`
+Content-verified duplicate report (size → head hash → full SHA-256). **Read-only** —
+deleting duplicates is a GUI operation (Recycle Bin-only, one copy per group enforced).
+Honors your Settings exclusions.
+
+```
+bitbroom-cli dupes D:\Photos --min-size 5          # ≥ 5 MB files only
+bitbroom-cli dupes C:\Users\me --json --top 100
 ```
 
 ### `version`
@@ -68,7 +78,8 @@ bitbroom-cli analyze "D:\Projects" --json
 | `--yes` / `-y` | Consent to delete |
 | `--min-age <hours>` | Override minimum file age (0 disables) |
 | `--json` | JSON output for scripting |
-| `--top <n>` / `--depth <n>` | analyze output shaping |
+| `--top <n>` / `--depth <n>` | analyze/dupes output shaping |
+| `--min-size <mb>` | dupes: smallest file size to consider (default 1 MB) |
 
 Invalid or unknown options (including a mistyped `--dry-run`) are rejected with exit code 3
 rather than ignored, so a typo can never turn a simulated run into a real deletion.

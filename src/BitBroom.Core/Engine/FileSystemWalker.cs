@@ -15,6 +15,9 @@ public static class FileSystemWalker
         public int SkippedCloudPlaceholders;
         public int SkippedTooNew;
         public int Inaccessible;
+
+        /// <summary>Entries skipped because the user excluded their path in Settings.</summary>
+        public int SkippedExcluded;
     }
 
     private static readonly EnumerationOptions Options = new()
@@ -30,11 +33,18 @@ public static class FileSystemWalker
         DateTime nowUtc,
         int globalMinAgeHours,
         WalkStats stats,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ExclusionSet? exclusions = null)
     {
         CleanRule rule = root.Rule;
         int minAgeHours = rule.MinAgeHoursOverride ?? globalMinAgeHours;
         DateTime cutoffUtc = nowUtc.AddHours(-minAgeHours);
+        exclusions ??= ExclusionSet.Empty;
+
+        if (exclusions.IsExcluded(root.Path))
+        {
+            yield break;
+        }
 
         var pending = new Stack<string>();
         pending.Push(root.Path);
@@ -85,6 +95,12 @@ public static class FileSystemWalker
                         stats.SkippedCloudPlaceholders++;
                     }
 
+                    continue;
+                }
+
+                if (exclusions.Count > 0 && exclusions.IsExcluded(entry.FullName))
+                {
+                    stats.SkippedExcluded++;
                     continue;
                 }
 
@@ -147,17 +163,25 @@ public static class FileSystemWalker
         ResolvedRoot root,
         DateTime nowUtc,
         int globalMinAgeHours,
-        WalkStats stats)
+        WalkStats stats,
+        ExclusionSet? exclusions = null)
     {
         CleanRule rule = root.Rule;
         int minAgeHours = rule.MinAgeHoursOverride ?? globalMinAgeHours;
         DateTime cutoffUtc = nowUtc.AddHours(-minAgeHours);
+        exclusions ??= ExclusionSet.Empty;
 
         foreach (string pattern in rule.FilePatterns)
         {
             string candidate = Path.Combine(root.Path, rule.RelativePattern.Length == 0
                 ? pattern
                 : Path.Combine(rule.RelativePattern, pattern));
+
+            if (exclusions.Count > 0 && exclusions.IsExcluded(candidate))
+            {
+                stats.SkippedExcluded++;
+                continue;
+            }
 
             ScanItem? item = TryDescribeFixedFile(candidate, root.Path, minAgeHours, cutoffUtc, stats);
             if (item.HasValue)

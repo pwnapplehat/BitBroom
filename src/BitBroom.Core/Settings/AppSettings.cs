@@ -3,6 +3,15 @@ using System.Text.Json.Serialization;
 
 namespace BitBroom.Core.Settings;
 
+/// <summary>A user-chosen folder cleaned by the "custom-folders" category.</summary>
+public sealed class CustomCleanFolder
+{
+    public string Path { get; set; } = string.Empty;
+
+    /// <summary>Only delete files older than this many hours (0 = no age limit).</summary>
+    public int MinAgeHours { get; set; } = 24 * 7;
+}
+
 /// <summary>
 /// Persisted application settings and lifetime counters.
 /// Stored as JSON under %LocalAppData%\BitBroom\settings.json.
@@ -32,6 +41,31 @@ public sealed class AppSettings
     /// only network request BitBroom can make, and it can be turned off here.
     /// </summary>
     public bool CheckForUpdatesAtStartup { get; set; } = true;
+
+    /// <summary>
+    /// Send cleaned files to the Recycle Bin instead of deleting permanently. Off by
+    /// default: space is only truly freed once the bin is emptied, and temp files can
+    /// flood it — but it gives new users an undo window while they build trust.
+    /// </summary>
+    public bool CleanToRecycleBin { get; set; }
+
+    /// <summary>Paths (with their subtrees) that scanning and cleaning must never touch.</summary>
+    public List<string> ExcludedPaths { get; set; } = [];
+
+    /// <summary>User-defined folders cleaned as the "custom-folders" category.</summary>
+    public List<CustomCleanFolder> CustomCleanFolders { get; set; } = [];
+
+    /// <summary>Mirror of the scheduled-cleaning UI state (the Task Scheduler task is authoritative).</summary>
+    public bool ScheduledCleaningEnabled { get; set; }
+
+    /// <summary>0 = daily, 1 = weekly, 2 = monthly.</summary>
+    public int ScheduleFrequency { get; set; } = 1;
+
+    /// <summary>Day of week for weekly schedules (0 = Sunday … 6 = Saturday).</summary>
+    public int ScheduleDayOfWeek { get; set; }
+
+    /// <summary>Hour of day (0–23) the scheduled clean runs.</summary>
+    public int ScheduleHour { get; set; } = 9;
 
     /// <summary>Per-category enabled/disabled overrides chosen by the user (persisted between runs).</summary>
     public Dictionary<string, bool> CategorySelections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -105,5 +139,19 @@ public sealed class AppSettings
         {
             MinAgeHours = 24 * 365;
         }
+
+        ExcludedPaths ??= [];
+        ExcludedPaths.RemoveAll(string.IsNullOrWhiteSpace);
+
+        CustomCleanFolders ??= [];
+        CustomCleanFolders.RemoveAll(f => f is null || string.IsNullOrWhiteSpace(f.Path));
+        foreach (CustomCleanFolder folder in CustomCleanFolders)
+        {
+            folder.MinAgeHours = Math.Clamp(folder.MinAgeHours, 0, 24 * 365);
+        }
+
+        ScheduleFrequency = Math.Clamp(ScheduleFrequency, 0, 2);
+        ScheduleDayOfWeek = Math.Clamp(ScheduleDayOfWeek, 0, 6);
+        ScheduleHour = Math.Clamp(ScheduleHour, 0, 23);
     }
 }

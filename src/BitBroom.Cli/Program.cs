@@ -3,6 +3,7 @@ using System.Text.Json;
 using BitBroom.Cli;
 using BitBroom.Core.Analyzer;
 using BitBroom.Core.Catalog;
+using BitBroom.Core.Dupes;
 using BitBroom.Core.Engine;
 using BitBroom.Core.Hogs;
 using BitBroom.Core.Logging;
@@ -35,6 +36,7 @@ try
         "clean" => await CommandCleanAsync(arguments, cancellation.Token),
         "hogs" => await CommandHogsAsync(arguments, cancellation.Token),
         "analyze" => await CommandAnalyzeAsync(arguments, cancellation.Token),
+        "dupes" => await CommandDupesAsync(arguments, cancellation.Token),
         "version" => CommandVersion(),
         _ => CommandHelp(arguments),
     };
@@ -79,7 +81,8 @@ static int CommandHelp(ArgumentParser arguments)
           scan                       Measure reclaimable space (read-only, always safe).
           clean                      Delete what scan found. Requires --yes (or use --dry-run).
           hogs                       Report hidden space hogs (hiberfil, WSL disks, restore points…).
-          analyze <path>             Directory size breakdown + largest files.
+          analyze <path>             Directory size breakdown, largest files, file types.
+          dupes <path>               Find duplicate files by content (read-only report).
           version                    Print version.
 
         CATEGORY SELECTION (scan/clean)
@@ -92,8 +95,9 @@ static int CommandHelp(ArgumentParser arguments)
           --yes, -y                  Confirm deletion (required for a real clean).
           --min-age <hours>          Override the minimum file age (default from settings, 24h).
           --json                     Machine-readable JSON output.
-          --top <n>                  analyze: number of largest files to print (default 25).
+          --top <n>                  analyze/dupes: number of entries to print (default 25).
           --depth <n>                analyze: tree depth to print (default 2).
+          --min-size <mb>            dupes: minimum file size to consider (default 1 MB).
 
         EXIT CODES
           0 ok · 1 fatal · 2 completed with skips/errors · 3 bad arguments · 4 needs admin · 5 aborted
@@ -103,7 +107,7 @@ static int CommandHelp(ArgumentParser arguments)
 
 static int CommandList(ArgumentParser arguments)
 {
-    IReadOnlyList<CleanCategory> categories = CategoryCatalog.Build();
+    IReadOnlyList<CleanCategory> categories = CategoryCatalog.Build(AppSettings.Load());
 
     if (arguments.Json)
     {
@@ -418,6 +422,7 @@ static async Task<int> CommandAnalyzeAsync(ArgumentParser arguments, Cancellatio
             durationMs = (long)result.Duration.TotalMilliseconds,
             tree = ToJsonNode(result.Root, arguments.Depth),
             largestFiles = result.LargestFiles.Take(arguments.Top).Select(f => new { f.Path, f.SizeBytes }),
+            fileTypes = result.FileTypes.Select(t => new { t.Extension, t.TotalBytes, t.FileCount }),
         };
         Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
         return ExitCodes.Ok;
@@ -435,6 +440,102 @@ static async Task<int> CommandAnalyzeAsync(ArgumentParser arguments, Cancellatio
         Console.WriteLine($"  {ByteFormatter.Format(file.SizeBytes),10}  {file.Path}");
     }
 
+    Console.WriteLine();
+    Console.WriteLine("BY FILE TYPE");
+    foreach (FileTypeStat stat in result.FileTypes.Take(15))
+    {
+        Console.WriteLine($"  {ByteFormatter.Format(stat.TotalBytes),10}  {stat.Extension,-12} ({stat.FileCount:N0} files)");
+    }
+
+    return ExitCodes.Ok;
+}
+
+static async Task<int> CommandDupesAsync(ArgumentParser arguments, CancellationToken ct)
+{
+    string? target = arguments.Positional.FirstOrDefault();
+    if (target is null)
+    {
+        Console.Error.WriteLine("Usage: bitbroom-cli dupes <path> [--min-size 1] [--top 25] [--json]");
+        Console.Error.WriteLine("Read-only: lists duplicate groups; deletion is GUI-only (Recycle Bin, keep-one enforced).");
+        return ExitCodes.BadArguments;
+    }
+
+    if (!Directory.Exists(target))
+    {
+        Console.Error.WriteLine($"Directory not found: {target}");
+        return ExitCodes.BadArguments;
+    }
+
+    AppSettings settings = AppSettings.Load();
+    var finder = new DuplicateFinder(new ExclusionSet(settings.ExcludedPaths));
+
+    if (!arguments.Json)
+    {
+        Console.WriteLine($"Scanning {target} for duplicates (min size {arguments.MinSizeMb} MB)…");
+    }
+
+    DuplicateScanResult result = await finder.ScanAsync(
+        target,
+        arguments.MinSizeMb * 1024L * 1024L,
+        arguments.Json ? null : new Progress<DuplicateScanProgress>(p =>
+            Console.Write($"\r  {p.Phase}: {p.FilesSeen:N0} files seen, {ByteFormatter.Format(p.BytesHashed)} hashed…   ")),
+        ct);
+
+    if (!arguments.Json)
+    {
+        Console.WriteLine();
+        Console.WriteLine();
+    }
+
+    if (arguments.Json)
+    {
+        var payload = new
+        {
+            path = PathGuard.Normalize(target),
+            groups = result.Groups.Take(arguments.Top).Select(g => new
+            {
+                g.ContentHash,
+                g.FileSizeBytes,
+                g.WastedBytes,
+                files = g.Files.Select(f => new { f.Path, f.SizeBytes, f.LastWriteUtc }),
+            }),
+            totalGroups = result.Groups.Count,
+            totalWastedBytes = result.TotalWastedBytes,
+            filesConsidered = result.FilesConsidered,
+            bytesHashed = result.BytesHashed,
+            skippedReparsePoints = result.SkippedReparsePoints,
+            durationMs = (long)result.Duration.TotalMilliseconds,
+        };
+        Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
+        return ExitCodes.Ok;
+    }
+
+    if (result.Groups.Count == 0)
+    {
+        Console.WriteLine("No duplicates found.");
+        return ExitCodes.Ok;
+    }
+
+    Console.WriteLine($"{result.Groups.Count:N0} duplicate groups — {ByteFormatter.Format(result.TotalWastedBytes)} reclaimable by keeping one copy each");
+    Console.WriteLine($"({result.FilesConsidered:N0} files considered, {ByteFormatter.Format(result.BytesHashed)} hashed, {result.Duration.TotalSeconds:0.0}s)");
+    Console.WriteLine();
+
+    foreach (DuplicateGroup group in result.Groups.Take(arguments.Top))
+    {
+        Console.WriteLine($"{group.Files.Count} copies × {ByteFormatter.Format(group.FileSizeBytes)}  (wastes {ByteFormatter.Format(group.WastedBytes)})");
+        foreach (DuplicateFile file in group.Files)
+        {
+            Console.WriteLine($"    {file.LastWriteUtc:yyyy-MM-dd}  {file.Path}");
+        }
+
+        Console.WriteLine();
+    }
+
+    if (result.Groups.Count > arguments.Top)
+    {
+        Console.WriteLine($"…and {result.Groups.Count - arguments.Top:N0} more groups (raise --top or use --json).");
+    }
+
     return ExitCodes.Ok;
 }
 
@@ -444,7 +545,7 @@ static async Task<int> CommandAnalyzeAsync(ArgumentParser arguments, Cancellatio
 
 static (List<CleanCategory>? Selected, int Error) SelectCategories(ArgumentParser arguments)
 {
-    IReadOnlyList<CleanCategory> catalog = CategoryCatalog.Build();
+    IReadOnlyList<CleanCategory> catalog = CategoryCatalog.Build(AppSettings.Load());
 
     if (arguments.CategoryIds is { Count: > 0 } ids)
     {

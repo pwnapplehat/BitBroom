@@ -45,6 +45,18 @@ public sealed class LargeFileViewModel
     public string Directory => System.IO.Path.GetDirectoryName(Path) ?? Path;
 }
 
+public sealed class FileTypeViewModel
+{
+    public required FileTypeStat Stat { get; init; }
+    public required long GrandTotal { get; init; }
+
+    public string Extension => Stat.Extension;
+    public string SizeText => ByteFormatter.Format(Stat.TotalBytes);
+    public string CountText => $"{Stat.FileCount:N0} files";
+    public double Share => GrandTotal > 0 ? (double)Stat.TotalBytes / GrandTotal : 0;
+    public double BarWidth => Math.Max(Share * 90, Stat.TotalBytes > 0 ? 2 : 0);
+}
+
 public sealed class AnalyzerViewModel : ObservableObject
 {
     private readonly Action<string> _setStatus;
@@ -59,11 +71,13 @@ public sealed class AnalyzerViewModel : ObservableObject
     public ObservableCollection<string> DriveChoices { get; } = [];
     public ObservableCollection<AnalyzerNodeViewModel> RootNodes { get; } = [];
     public ObservableCollection<LargeFileViewModel> LargestFiles { get; } = [];
+    public ObservableCollection<FileTypeViewModel> FileTypes { get; } = [];
 
     public AsyncRelayCommand AnalyzeCommand { get; }
     public RelayCommand CancelCommand { get; }
     public RelayCommand OpenInExplorerCommand { get; }
     public RelayCommand RecycleCommand { get; }
+    public RelayCommand ExportCsvCommand { get; }
 
     public AnalyzerViewModel(Action<string> setStatus)
     {
@@ -118,6 +132,48 @@ public sealed class AnalyzerViewModel : ObservableObject
             int hr = await Task.Run(() => NativeMethods.SendToRecycleBin(path));
             _setStatus(hr == 0 ? $"Sent to Recycle Bin: {path}" : $"Could not recycle (error {hr}): {path}");
         });
+        ExportCsvCommand = new RelayCommand(ExportCsv, () => LargestFiles.Count > 0 || FileTypes.Count > 0);
+    }
+
+    /// <summary>Exports largest files + type breakdown to a CSV the user picks.</summary>
+    private void ExportCsv()
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Export analysis as CSV",
+            FileName = $"bitbroom-analysis-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            Filter = "CSV files (*.csv)|*.csv",
+            DefaultExt = ".csv",
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            static string Quote(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+
+            sb.AppendLine("Section,Name,Path,SizeBytes,FileCount");
+            foreach (LargeFileViewModel file in LargestFiles)
+            {
+                sb.AppendLine($"LargestFile,{Quote(file.Name)},{Quote(file.Path)},{file.SizeBytes},1");
+            }
+
+            foreach (FileTypeViewModel type in FileTypes)
+            {
+                sb.AppendLine($"FileType,{Quote(type.Extension)},,{type.Stat.TotalBytes},{type.Stat.FileCount}");
+            }
+
+            File.WriteAllText(dialog.FileName, sb.ToString(), System.Text.Encoding.UTF8);
+            _setStatus($"Exported analysis to {dialog.FileName}");
+        }
+        catch (Exception ex)
+        {
+            _setStatus($"Export failed: {ex.Message}");
+        }
     }
 
     private static string? PathOf(object? parameter) => parameter switch
@@ -172,6 +228,7 @@ public sealed class AnalyzerViewModel : ObservableObject
         IsBusy = true;
         RootNodes.Clear();
         LargestFiles.Clear();
+        FileTypes.Clear();
         SummaryText = null;
         _setStatus($"Analyzing {target}…");
 
@@ -193,6 +250,13 @@ public sealed class AnalyzerViewModel : ObservableObject
             {
                 LargestFiles.Add(new LargeFileViewModel { Path = file.Path, SizeBytes = file.SizeBytes });
             }
+
+            foreach (FileTypeStat stat in result.FileTypes.Take(15))
+            {
+                FileTypes.Add(new FileTypeViewModel { Stat = stat, GrandTotal = result.TotalBytes });
+            }
+
+            ExportCsvCommand.RaiseCanExecuteChanged();
 
             SummaryText = $"{ByteFormatter.Format(result.TotalBytes)} in {result.TotalFiles:N0} files · " +
                           $"{result.Duration.TotalSeconds:0.0}s · {result.SkippedReparsePoints} junctions skipped" +

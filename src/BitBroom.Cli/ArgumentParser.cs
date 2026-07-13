@@ -20,6 +20,9 @@ public sealed class ArgumentParser
     public int Top { get; } = 25;
     public int Depth { get; } = 2;
 
+    /// <summary>dupes: minimum file size in MB to consider (default 1 MB).</summary>
+    public int MinSizeMb { get; } = 1;
+
     /// <summary>Non-null when the arguments were invalid; the CLI prints it and returns exit code 3.</summary>
     public string? Error { get; }
 
@@ -30,6 +33,7 @@ public sealed class ArgumentParser
         int? minAge = null;
         int top = 25;
         int depth = 2;
+        int minSizeMb = 1;
 
         // Returns the value token for a value-flag, or sets Error and returns null when the
         // value is missing or looks like another option.
@@ -141,6 +145,24 @@ public sealed class ArgumentParser
                     break;
                 }
 
+                case "--min-size":
+                {
+                    string? value = TakeValue(arg, ref i);
+                    if (value is not null)
+                    {
+                        if (int.TryParse(value, out int parsed) && parsed >= 0)
+                        {
+                            minSizeMb = parsed;
+                        }
+                        else
+                        {
+                            error ??= $"Invalid value for --min-size: '{value}' (expected megabytes as a non-negative integer).";
+                        }
+                    }
+
+                    break;
+                }
+
                 default:
                     if (arg.StartsWith('-'))
                     {
@@ -164,6 +186,7 @@ public sealed class ArgumentParser
         MinAgeHours = minAge;
         Top = top;
         Depth = depth;
+        MinSizeMb = minSizeMb;
         Error = error;
     }
 }

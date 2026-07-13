@@ -104,14 +104,20 @@
         </Grid>
       </ui:Card>
 
-      <!-- Largest files -->
+      <!-- Largest files + file types -->
       <ui:Card Grid.Column="2" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
-          <TextBlock Grid.Row="0" Text="LARGEST FILES" Style="{StaticResource Text.Section}" Margin="8,4,0,8"/>
+          <Grid Grid.Row="0">
+            <TextBlock Text="LARGEST FILES" Style="{StaticResource Text.Section}" Margin="8,4,0,8"/>
+            <ui:Button Content="Export CSV" Appearance="Transparent" Padding="6,2" FontSize="11"
+                       HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Command="{Binding ExportCsvCommand}"/>
+          </Grid>
           <ListBox Grid.Row="1" ItemsSource="{Binding LargestFiles}"
                    ScrollViewer.CanContentScroll="True"
                    VirtualizingPanel.ScrollUnit="Pixel"
@@ -158,6 +164,43 @@
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
+
+          <!-- File-type breakdown -->
+          <StackPanel Grid.Row="2" Visibility="{Binding SummaryText, Converter={StaticResource NullToVis}}">
+            <TextBlock Text="BY FILE TYPE" Style="{StaticResource Text.Section}" Margin="8,10,0,6"/>
+            <ItemsControl ItemsSource="{Binding FileTypes}" MaxHeight="190" Margin="8,0,8,4">
+              <ItemsControl.Template>
+                <ControlTemplate TargetType="ItemsControl">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsPresenter/>
+                  </ScrollViewer>
+                </ControlTemplate>
+              </ItemsControl.Template>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,2">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="82"/>
+                      <ColumnDefinition Width="96"/>
+                      <ColumnDefinition Width="*"/>
+                      <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Extension}" FontSize="12" FontWeight="Medium"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center"/>
+                    <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
+                      <Border Background="{StaticResource Brush.StrokeSoft}" Height="6" CornerRadius="3"/>
+                      <Border Background="{StaticResource Brush.Accent}" Height="6" CornerRadius="3"
+                              HorizontalAlignment="Left" Width="{Binding BarWidth}"/>
+                    </Grid>
+                    <TextBlock Grid.Column="2" Text="{Binding CountText}" Style="{StaticResource Text.Caption}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
         </Grid>
       </ui:Card>
     </Grid>

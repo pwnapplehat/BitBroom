@@ -64,6 +64,12 @@ picked up next time.
 | `adobe-media-cache` | Safe | ✅ | `Media Cache Files`, `Media Cache`, `Peak Files` under `%AppData%\Adobe\Common` |
 | `whatsapp-cache` | Safe | ✅ | packaged WhatsApp `LocalCache` |
 | `office-cache` | Safe | ✅ | Office `Wef` + `WebServiceCache`; **Document Cache excluded** (unsynced edits) |
+| `zoom-logs` | Safe | ✅ | `%AppData%\Zoom\logs` (7-day floor) |
+| `apple-device-updates` | Safe | ✅ | iTunes `iPhone/iPad/iPod Software Updates` IPSW installers (5–10 GB each; Apple: safe, re-downloaded on demand). **MobileSync device backups never touched** |
+| `onedrive-logs` | Safe | ✅ | `%LocalAppData%\Microsoft\OneDrive\logs` (7-day floor) — synced files and sync state untouched |
+| `obs-logs` | Safe | ✅ | `obs-studio\logs`, `crashes` (7-day floor) — scenes/profiles/recordings untouched |
+| `docker-desktop-logs` | Safe | ✅ | `%LocalAppData%\Docker\log` (7-day floor) — images/containers live in the WSL vhdx (see Hogs) |
+| `java-deployment-cache` | Safe | ✅ | `%LocalAppData%Low\Sun\Java\Deployment\cache` (legacy Web Start) |
 
 ## Gaming & GPU
 
@@ -75,6 +81,10 @@ picked up next time.
 | `steam-caches` | Safe | ✅ | registry-located install → `steamapps\shadercache|downloading|temp` + `htmlcache`; **games/saves/workshop untouched** |
 | `epic-cache` | Safe | ✅ | launcher `webcache` + `webcache_4430`, logs (7-day floor) |
 | `ea-cache` | Safe | ✅ | EA Desktop `cache`, logs |
+| `battlenet-cache` | Safe | ✅ | `Battle.net\Cache|BrowserCache`, logs (7-day floor) — games/accounts untouched |
+| `ubisoft-cache` | Safe | ✅ | `Ubisoft Game Launcher\cache`, logs (7-day floor) — installs/saves/cloud untouched |
+| `unity-caches` | Safe | ✅ | `%LocalAppData%\Unity\cache` (global GI/shader caches) |
+| `unreal-ddc` | Moderate | – | `UnrealEngine\Common\DerivedDataCache` — regenerable but recooking shaders takes long on big projects |
 
 ## Development
 
@@ -82,6 +92,8 @@ picked up next time.
 |---|---|---|---|
 | `npm-yarn-cache` | Safe | ✅ | `npm-cache`, `Yarn\Cache` — project `node_modules` untouched |
 | `pip-uv-cache` | Safe | ✅ | `pip\cache`, `uv\cache` |
+| `cargo-cache` | Safe | ✅ | `.cargo\registry\cache|src` (Rust project's own guidance) — installed binaries (`.cargo\bin`) untouched |
+| `go-build-cache` | Safe | ✅ | `%LocalAppData%\go-build` (= `go clean -cache`) — module cache (`~\go\pkg\mod`) untouched |
 | `nuget-http-cache` | Safe | ✅ | `NuGet\v3-cache|http-cache|plugins-cache` |
 | `vs-code-cache` | Safe | ✅ | VS Code / Insiders / **Cursor** / VSCodium: `Cache`, `CachedData`, `Code Cache`, `GPUCache`, `CachedExtensionVSIXs`, SW cache, logs (7-day) |
 | `visual-studio-cache` | Safe | ✅ | `ComponentModelCache` (the classic VS fix), `WebsiteCache` |
@@ -99,6 +111,7 @@ picked up next time.
 | `upgrade-leftovers` | Moderate | – | ✅ | `$Windows.~BT`, `$Windows.~WS`, `$GetCurrent`, `$SysReset`, `C:\ESD` — not while an update is pending |
 | `windows-old` | **Advanced** | – | ✅ | kills rollback; may contain old profile files — check `Windows.old\Users` first |
 | `event-logs` | **Advanced** | – | ✅ | clears diagnostic history via `wevtutil` |
+| `custom-folders` | Moderate | – | – | **your** folders from Settings → Custom folders, each with its own age limit. Anchored at the folder's parent and validated by the full PathGuard: protected locations (Documents, Desktop, Windows, Program Files, OneDrive, drive roots…) are refused at scan time even if added |
 
 ---
 
@@ -119,6 +132,9 @@ Documented refusals — each with reasoning in [RESEARCH.md](RESEARCH.md):
 | DISM `/ResetBase` | Permanently removes update-uninstall; marginal gain |
 | Boot-time deletion of locked files | Racing the owning process for a few MB |
 | pagefile/hiberfil deletion as "cleaning" | System-managed; exposed as explicit, reversible Tools instead |
+| winapp2.ini import | Thousands of unvetted third-party delete rules (incl. registry ops) would bypass the tested guard model; every BitBroom rule is individually researched and gate-tested instead |
+| Startup manager / uninstaller / driver updater | Windows Settings & Task Manager do this natively; suite-creep is how cleaners rot |
+| Secure wipe / free-space shredding | Privacy tool, not a space tool; ineffective on SSDs and punishing on any drive |
 
 ## Adding a category (contributors)
 

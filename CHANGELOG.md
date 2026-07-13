@@ -3,6 +3,47 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.1.0] — 2026-07-13
+
+The "world-class" feature release, driven by a competitive research pass across
+CCleaner / BleachBit / Wise / WizTree / PC Manager and community pain points.
+
+### Added
+- **Duplicates tab**: content-verified duplicate file finder — three-stage pipeline
+  (size → 128 KB head hash → full SHA-256) so large unique files are never fully read
+  and a match is never a guess. Grouped results with keep-newest/keep-oldest auto-select.
+  Deletion is **Recycle Bin-only** and **one copy of every group always survives**,
+  enforced in the engine (`DuplicateDeleter`), not just the UI. Windows/Program Files
+  are excluded from scans by design.
+- **Empty folders mode** (same tab): finds truly empty folders (nested empties count;
+  a folder holding a junction never does). Re-verified file-free immediately before
+  each Recycle Bin deletion.
+- **Scheduled cleaning** (Settings): per-user Windows Task Scheduler task running
+  `bitbroom-cli clean --yes` daily/weekly/monthly at your chosen hour — free,
+  no elevation, reconciled with the real task state on load.
+- **Custom folders category**: add your own folders (Settings) with a per-folder age
+  limit; they appear as a Moderate, off-by-default category. The PathGuard still
+  refuses protected locations — adding Documents does nothing.
+- **Exclusions** (Settings): folders BitBroom must never touch, enforced during root
+  expansion, enumeration and again at delete time; also honored by the duplicate and
+  empty-folder finders and the CLI.
+- **Recycle Bin clean mode** (Settings, off by default): cleans send files to the bin
+  instead of deleting permanently — an undo window while you build trust, with the
+  honest caveat that space frees only when the bin is emptied.
+- **12 new researched categories**: Zoom logs, Apple device updates (IPSW), OneDrive
+  logs, OBS logs & crash dumps, Docker Desktop logs, Java deployment cache, Battle.net
+  cache, Ubisoft Connect cache, Unity editor caches, Unreal DerivedDataCache (Moderate),
+  Rust cargo registry cache, Go build cache — catalog now counts 60.
+- **Analyzer: file-type breakdown** (top extensions by size) and **CSV export** of the
+  largest files + type stats. CLI `analyze` prints/embeds the same data.
+- **CLI `dupes <path>`** command: read-only duplicate report with `--min-size`, `--top`,
+  `--json`.
+
+### Changed
+- Audit log gained a `BIN` marker for Recycle Bin deletions; scan notes now show
+  "N excluded by you" when exclusions skip entries.
+- Space Hogs: CapabilityAccessManager guidance cites the official fix (KB5095093).
+
 ## [1.0.0] — 2026-07-12
 
 ### UI revamp — native Windows 11 Fluent

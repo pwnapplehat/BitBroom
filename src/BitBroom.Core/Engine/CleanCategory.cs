@@ -10,6 +10,7 @@ public sealed class ScanContext
     public required int GlobalMinAgeHours { get; init; }
     public DateTime NowUtc { get; init; } = DateTime.UtcNow;
     public RunLogger? Logger { get; init; }
+    public ExclusionSet Exclusions { get; init; } = ExclusionSet.Empty;
 }
 
 /// <summary>Shared context for clean operations.</summary>
@@ -18,6 +19,10 @@ public sealed class CleanContext
     public required PathResolver Resolver { get; init; }
     public required RunLogger Logger { get; init; }
     public required bool Simulate { get; init; }
+    public ExclusionSet Exclusions { get; init; } = ExclusionSet.Empty;
+
+    /// <summary>Send deleted files to the Recycle Bin instead of removing them permanently.</summary>
+    public bool UseRecycleBin { get; init; }
 }
 
 /// <summary>
@@ -75,8 +80,8 @@ public class CleanCategory
                 try
                 {
                     IEnumerable<ScanItem> items = rule.Kind == RuleKind.FixedFiles
-                        ? FileSystemWalker.ResolveFixedFiles(root, context.NowUtc, context.GlobalMinAgeHours, stats)
-                        : FileSystemWalker.Walk(root, context.NowUtc, context.GlobalMinAgeHours, stats, cancellationToken);
+                        ? FileSystemWalker.ResolveFixedFiles(root, context.NowUtc, context.GlobalMinAgeHours, stats, context.Exclusions)
+                        : FileSystemWalker.Walk(root, context.NowUtc, context.GlobalMinAgeHours, stats, cancellationToken, context.Exclusions);
 
                     foreach (ScanItem item in items)
                     {
@@ -97,6 +102,7 @@ public class CleanCategory
                 result.SkippedCloudPlaceholders += stats.SkippedCloudPlaceholders;
                 result.SkippedTooNew += stats.SkippedTooNew;
                 result.Inaccessible += stats.Inaccessible;
+                result.SkippedExcluded += stats.SkippedExcluded;
             }
         }
 
@@ -120,7 +126,10 @@ public class CleanCategory
     {
         var result = new CategoryCleanResult { CategoryId = Id, Simulated = context.Simulate };
         var stopwatch = Stopwatch.StartNew();
-        var deleter = new SafeDeleter(context.Resolver.Guard, context.Logger, context.Simulate);
+        DeleteMode mode = context.Simulate
+            ? DeleteMode.Simulate
+            : context.UseRecycleBin ? DeleteMode.RecycleBin : DeleteMode.Permanent;
+        var deleter = new SafeDeleter(context.Resolver.Guard, context.Logger, mode, context.Exclusions);
 
         // Track directories per root for the empty-directory pass.
         var directoriesByRoot = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);

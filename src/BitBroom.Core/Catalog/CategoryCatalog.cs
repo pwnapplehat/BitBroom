@@ -1,4 +1,5 @@
 using BitBroom.Core.Engine;
+using BitBroom.Core.Settings;
 using BitBroom.Core.Special;
 using Microsoft.Win32;
 
@@ -12,7 +13,8 @@ namespace BitBroom.Core.Catalog;
 /// </summary>
 public static class CategoryCatalog
 {
-    public static IReadOnlyList<CleanCategory> Build()
+    /// <summary>Builds the catalog; pass settings to include the user's custom folders category.</summary>
+    public static IReadOnlyList<CleanCategory> Build(AppSettings? settings = null)
     {
         var categories = new List<CleanCategory>();
 
@@ -327,6 +329,93 @@ public static class CategoryCatalog
             ],
         });
 
+        categories.Add(new CleanCategory
+        {
+            Id = "zoom-logs",
+            Name = "Zoom logs",
+            Description = "Zoom's diagnostic log folder (%AppData%\\Zoom\\logs). Meetings, chat history and sign-in are unaffected.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"Zoom\logs", MinAgeHoursOverride = 168 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "apple-device-updates",
+            Name = "Apple device update installers (IPSW)",
+            Description = "iPhone/iPad firmware installers iTunes keeps after updating a device (%AppData%\\Apple Computer\\iTunes\\* Software Updates) — 5–10 GB each. Apple's guidance: safe to delete; iTunes re-downloads on demand. Device BACKUPS (MobileSync) are never touched.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"Apple Computer\iTunes\iPhone Software Updates" }.Validate(),
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"Apple Computer\iTunes\iPad Software Updates" }.Validate(),
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"Apple Computer\iTunes\iPod Software Updates" }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "onedrive-logs",
+            Name = "OneDrive logs",
+            Description = "OneDrive's diagnostic logs (%LocalAppData%\\Microsoft\\OneDrive\\logs). Your synced files and sync state are NOT touched — this is the log folder only.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Microsoft\OneDrive\logs", MinAgeHoursOverride = 168 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "obs-logs",
+            Name = "OBS Studio logs & crash dumps",
+            Description = "OBS's log and crash-report folders (%AppData%\\obs-studio\\logs, crashes). Scenes, profiles and recordings untouched.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"obs-studio\logs", MinAgeHoursOverride = 168 }.Validate(),
+                new CleanRule { Base = KnownBase.RoamingAppData, RelativePattern = @"obs-studio\crashes", MinAgeHoursOverride = 168 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "docker-desktop-logs",
+            Name = "Docker Desktop logs",
+            Description = "Docker Desktop's log folder (%LocalAppData%\\Docker\\log). Images, containers and volumes live in the WSL vhdx (see Space Hogs) and are NOT touched.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Docker\log", MinAgeHoursOverride = 168 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "java-deployment-cache",
+            Name = "Java deployment cache",
+            Description = "Legacy Java Web Start / applet cache (%LocalAppData%Low\\Sun\\Java\\Deployment\\cache). Obsolete tech; re-fetched in the unlikely case something still uses it.",
+            Group = CategoryGroup.Applications,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalLow, RelativePattern = @"Sun\Java\Deployment\cache" }.Validate(),
+            ],
+        });
+
         // =====================================================================
         // GAMING & GPU
         // =====================================================================
@@ -434,6 +523,66 @@ public static class CategoryCatalog
 
         categories.Add(new CleanCategory
         {
+            Id = "battlenet-cache",
+            Name = "Battle.net cache & logs",
+            Description = "Battle.net launcher cache and logs (%LocalAppData%\\Battle.net). Installed games, accounts and settings untouched; the launcher rebuilds its cache on next start.",
+            Group = CategoryGroup.GamingAndGpu,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Battle.net\Cache", MinAgeHoursOverride = 0 }.Validate(),
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Battle.net\Logs", MinAgeHoursOverride = 168 }.Validate(),
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Battle.net\BrowserCache", MinAgeHoursOverride = 0 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "ubisoft-cache",
+            Name = "Ubisoft Connect cache & logs",
+            Description = "Ubisoft Connect's web cache, thumbnails and logs (%LocalAppData%\\Ubisoft Game Launcher). Game installs, saves and cloud sync untouched.",
+            Group = CategoryGroup.GamingAndGpu,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Ubisoft Game Launcher\cache", MinAgeHoursOverride = 0 }.Validate(),
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Ubisoft Game Launcher\logs", MinAgeHoursOverride = 168 }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "unity-caches",
+            Name = "Unity editor caches",
+            Description = "Unity's global GI/shader caches (%LocalAppData%\\Unity\\cache). Rebuilt per project on demand; projects and assets untouched.",
+            Group = CategoryGroup.GamingAndGpu,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"Unity\cache" }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "unreal-ddc",
+            Name = "Unreal Engine DerivedDataCache",
+            Description = "Unreal's shared DerivedDataCache (%LocalAppData%\\UnrealEngine\\Common\\DerivedDataCache) — routinely tens of GB. Fully regenerable, but the first editor open per project recooks shaders (can take a long time on big projects).",
+            Group = CategoryGroup.GamingAndGpu,
+            Risk = RiskLevel.Moderate,
+            EnabledByDefault = false,
+            Warning = "Rebuilding derived data can take a long time on large Unreal projects.",
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = @"UnrealEngine\Common\DerivedDataCache" }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
             Id = "ea-cache",
             Name = "EA app cache",
             Description = "EA Desktop app cache and logs.",
@@ -508,6 +657,35 @@ public static class CategoryCatalog
             Rules =
             [
                 new CleanRule { Base = KnownBase.UserProfile, RelativePattern = @".nuget\packages" }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "cargo-cache",
+            Name = "Rust Cargo registry cache",
+            Description = "Downloaded .crate archives and extracted sources (%UserProfile%\\.cargo\\registry\\cache, src) — the Rust project's guidance: safe to delete, re-downloaded on next build. Installed binaries (.cargo\\bin) untouched.",
+            Group = CategoryGroup.Development,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.UserProfile, RelativePattern = @".cargo\registry\cache" }.Validate(),
+                new CleanRule { Base = KnownBase.UserProfile, RelativePattern = @".cargo\registry\src" }.Validate(),
+            ],
+        });
+
+        categories.Add(new CleanCategory
+        {
+            Id = "go-build-cache",
+            Name = "Go build cache",
+            Description = "Go's compiled-object cache (%LocalAppData%\\go-build) — what 'go clean -cache' removes. The module download cache (~\\go\\pkg\\mod) is NOT touched.",
+            Group = CategoryGroup.Development,
+            Risk = RiskLevel.Safe,
+            EnabledByDefault = true,
+            Rules =
+            [
+                new CleanRule { Base = KnownBase.LocalAppData, RelativePattern = "go-build" }.Validate(),
             ],
         });
 
@@ -635,6 +813,11 @@ public static class CategoryCatalog
 
         categories.Add(WindowsOldCategory.Create());
         categories.Add(EventLogsCategory.Create());
+
+        if (settings is { CustomCleanFolders.Count: > 0 })
+        {
+            categories.Add(CustomFoldersCategory.Create(settings.CustomCleanFolders));
+        }
 
         return categories;
     }

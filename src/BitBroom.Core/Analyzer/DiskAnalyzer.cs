@@ -15,10 +15,17 @@ public sealed class AnalyzerNode
 
 public sealed record LargeFile(string Path, long SizeBytes, DateTime LastWriteUtc);
 
+/// <summary>Aggregate size/count for one file extension.</summary>
+public sealed record FileTypeStat(string Extension, long TotalBytes, long FileCount);
+
 public sealed class AnalyzerResult
 {
     public required AnalyzerNode Root { get; init; }
     public required List<LargeFile> LargestFiles { get; init; }
+
+    /// <summary>Extensions by total size, descending (top 30; the rest folded into "other").</summary>
+    public required List<FileTypeStat> FileTypes { get; init; }
+
     public long TotalBytes => Root.SizeBytes;
     public long TotalFiles => Root.FileCount;
     public int InaccessibleDirectories { get; init; }
@@ -36,6 +43,7 @@ public sealed record AnalyzerProgress(long DirectoriesScanned, long FilesScanned
 public sealed class DiskAnalyzer
 {
     private const int TopFilesCount = 100;
+    private const int TopTypesCount = 30;
 
     public async Task<AnalyzerResult> AnalyzeAsync(
         string rootPath,
@@ -59,6 +67,7 @@ public sealed class DiskAnalyzer
 
         var topFiles = new PriorityQueue<LargeFile, long>(TopFilesCount + 1);
         var topFilesLock = new object();
+        var typeStats = new System.Collections.Concurrent.ConcurrentDictionary<string, (long Bytes, long Count)>(StringComparer.OrdinalIgnoreCase);
         long lastReport = 0;
 
         // First level is enumerated inline so we can parallelize across top-level children.
@@ -88,6 +97,7 @@ public sealed class DiskAnalyzer
                     filesScanned++;
                     bytesSoFar += length;
                     OfferTopFile(topFiles, topFilesLock, file, length);
+                    AccumulateType(typeStats, file.Name, length);
                 }
             }
         }
@@ -137,6 +147,7 @@ public sealed class DiskAnalyzer
         {
             Root = rootNode,
             LargestFiles = largest,
+            FileTypes = FoldTypeStats(typeStats),
             InaccessibleDirectories = inaccessible,
             SkippedReparsePoints = reparseSkipped,
             Duration = stopwatch.Elapsed,
@@ -201,6 +212,7 @@ public sealed class DiskAnalyzer
                         Interlocked.Increment(ref filesScanned);
                         long total = Interlocked.Add(ref bytesSoFar, length);
                         OfferTopFile(topFiles, topFilesLock, file, length);
+                        AccumulateType(typeStats, file.Name, length);
 
                         long now = Environment.TickCount64;
                         long last = Interlocked.Read(ref lastReport);
@@ -273,6 +285,41 @@ public sealed class DiskAnalyzer
         {
             return DateTime.MinValue;
         }
+    }
+
+    private static void AccumulateType(
+        System.Collections.Concurrent.ConcurrentDictionary<string, (long Bytes, long Count)> stats,
+        string fileName,
+        long length)
+    {
+        string extension = Path.GetExtension(fileName);
+        string key = extension.Length is > 1 and <= 12 ? extension.ToLowerInvariant() : "(none)";
+        stats.AddOrUpdate(key, (length, 1), (_, prev) => (prev.Bytes + length, prev.Count + 1));
+    }
+
+    /// <summary>Top extensions by size; everything past the cut folded into "(other)".</summary>
+    private static List<FileTypeStat> FoldTypeStats(
+        System.Collections.Concurrent.ConcurrentDictionary<string, (long Bytes, long Count)> stats)
+    {
+        List<FileTypeStat> ordered = [.. stats
+            .Select(kv => new FileTypeStat(kv.Key, kv.Value.Bytes, kv.Value.Count))
+            .OrderByDescending(s => s.TotalBytes)];
+
+        if (ordered.Count <= TopTypesCount)
+        {
+            return ordered;
+        }
+
+        List<FileTypeStat> top = [.. ordered.Take(TopTypesCount)];
+        long otherBytes = 0, otherCount = 0;
+        foreach (FileTypeStat stat in ordered.Skip(TopTypesCount))
+        {
+            otherBytes += stat.TotalBytes;
+            otherCount += stat.FileCount;
+        }
+
+        top.Add(new FileTypeStat("(other)", otherBytes, otherCount));
+        return top;
     }
 
     /// <summary>Bottom-up size accumulation for a subtree (iterative post-order; deep trees are safe).</summary>

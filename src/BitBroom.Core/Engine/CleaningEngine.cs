@@ -27,6 +27,7 @@ public sealed class CleaningEngine
         {
             Resolver = resolver,
             GlobalMinAgeHours = settings.MinAgeHours,
+            Exclusions = new ExclusionSet(settings.ExcludedPaths),
         };
 
         var results = new ConcurrentDictionary<string, CategoryScanResult>(StringComparer.OrdinalIgnoreCase);
@@ -81,6 +82,8 @@ public sealed class CleaningEngine
             Resolver = resolver,
             Logger = logger,
             Simulate = settings.SimulateOnly,
+            Exclusions = new ExclusionSet(settings.ExcludedPaths),
+            UseRecycleBin = settings.CleanToRecycleBin,
         };
 
         var results = new Dictionary<string, CategoryCleanResult>(StringComparer.OrdinalIgnoreCase);

@@ -54,12 +54,120 @@
 
           <Grid>
             <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Send cleaned files to the Recycle Bin" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="An undo window: everything a clean removes goes to the bin instead of being deleted permanently. Honest trade-off — space is only freed once you empty the bin, and big cleans are slower. Great while you're building trust."/>
+            </StackPanel>
+            <ui:ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center" IsChecked="{Binding CleanToRecycleBin}"/>
+          </Grid>
+
+          <Separator Background="{DynamicResource ControlStrokeColorDefaultBrush}" Margin="0,14"/>
+
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
               <TextBlock Text="Try to create a restore point before cleaning" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
               <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
                          Text="Honest note: restore points protect system files and the registry — not caches — so this adds little for BitBroom's categories. Off by default. Requires admin and System Protection enabled; Windows also rate-limits creation to one per 24h."/>
             </StackPanel>
             <ui:ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center" IsChecked="{Binding CreateRestorePointBeforeClean}"/>
           </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <TextBlock Text="SCHEDULED CLEANING" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <StackPanel>
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Clean automatically on a schedule" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="Registers a Windows Task Scheduler task that runs 'bitbroom-cli clean --yes' with your saved settings — the safe default set only. Runs without admin, so system categories are skipped; every run writes an audit log."/>
+              <TextBlock Text="{Binding ScheduleStatus}" Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
+                         Foreground="{StaticResource Brush.Accent}"/>
+            </StackPanel>
+            <ui:ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center"
+                             IsChecked="{Binding ScheduledCleaningEnabled}"
+                             IsEnabled="{Binding SchedulingAvailable}"/>
+          </Grid>
+
+          <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                      Visibility="{Binding ScheduledCleaningEnabled, Converter={StaticResource BoolToVis}}">
+            <ComboBox SelectedIndex="{Binding ScheduleFrequencyIndex}" MinWidth="120" Margin="0,0,8,0">
+              <ComboBoxItem Content="Daily"/>
+              <ComboBoxItem Content="Weekly"/>
+              <ComboBoxItem Content="Monthly"/>
+            </ComboBox>
+            <ComboBox SelectedIndex="{Binding ScheduleDayIndex}" MinWidth="130" Margin="0,0,8,0"
+                      Visibility="{Binding IsWeekly, Converter={StaticResource BoolToVis}}">
+              <ComboBoxItem Content="Sunday"/>
+              <ComboBoxItem Content="Monday"/>
+              <ComboBoxItem Content="Tuesday"/>
+              <ComboBoxItem Content="Wednesday"/>
+              <ComboBoxItem Content="Thursday"/>
+              <ComboBoxItem Content="Friday"/>
+              <ComboBoxItem Content="Saturday"/>
+            </ComboBox>
+            <ComboBox SelectedIndex="{Binding ScheduleHourIndex}" MinWidth="100" Margin="0,0,8,0"
+                      ItemsSource="{Binding HourChoices, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+            <ui:Button Content="Apply schedule" Command="{Binding ApplyScheduleCommand}"/>
+          </StackPanel>
+        </StackPanel>
+      </ui:Card>
+
+      <TextBlock Text="CUSTOM FOLDERS" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <StackPanel>
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Your own folders to clean" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="Appear as the 'Custom folders' category in Clean (off by default, Moderate risk). Files older than 7 days are targeted. The safety guard still refuses protected locations — adding Documents here does nothing."/>
+            </StackPanel>
+            <ui:Button Content="Add folder" HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Command="{Binding AddCustomFolderCommand}"/>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding CustomFolders}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Path}" Style="{StaticResource Text.Body}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding AgeText}" Style="{StaticResource Text.Caption}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                  </StackPanel>
+                  <ui:Button Content="Remove" Appearance="Transparent" HorizontalAlignment="Right"
+                             Command="{Binding DataContext.SettingsVm.RemoveCustomFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             CommandParameter="{Binding}"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ui:Card>
+
+      <TextBlock Text="EXCLUSIONS" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <StackPanel>
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Folders BitBroom must never touch" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="Excluded paths (and everything under them) are skipped by every scan, clean and duplicate search — enforced in the engine and re-checked at delete time."/>
+            </StackPanel>
+            <ui:Button Content="Add folder" HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Command="{Binding AddExclusionCommand}"/>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding ExcludedPaths}" Margin="0,8,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,3">
+                  <TextBlock Text="{Binding Path}" Style="{StaticResource Text.Body}" VerticalAlignment="Center"/>
+                  <ui:Button Content="Remove" Appearance="Transparent" HorizontalAlignment="Right"
+                             Command="{Binding DataContext.SettingsVm.RemoveExclusionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             CommandParameter="{Binding}"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </ui:Card>
 

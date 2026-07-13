@@ -63,6 +63,9 @@ public sealed class CategoryScanResult
     /// <summary>Files skipped because they are younger than the minimum age.</summary>
     public int SkippedTooNew { get; set; }
 
+    /// <summary>Entries skipped because the user excluded their path in Settings.</summary>
+    public int SkippedExcluded { get; set; }
+
     /// <summary>Entries that could not be read (access denied etc.).</summary>
     public int Inaccessible { get; set; }
 

@@ -30,6 +30,7 @@ public sealed class MainViewModel : ObservableObject
     private bool _updateInProgress;
     public CleanViewModel Clean { get; }
     public AnalyzerViewModel Analyzer { get; }
+    public DupesViewModel Dupes { get; }
     public HogsViewModel Hogs { get; }
     public ToolsViewModel Tools { get; }
     public SettingsViewModel SettingsVm { get; }
@@ -55,6 +56,7 @@ public sealed class MainViewModel : ObservableObject
 
         Clean = new CleanViewModel(_settings, SetStatus) { OnCleanCompleted = RefreshDrives };
         Analyzer = new AnalyzerViewModel(SetStatus);
+        Dupes = new DupesViewModel(_settings, SetStatus);
         Hogs = new HogsViewModel(SetStatus);
         Tools = new ToolsViewModel(SetStatus);
         SettingsVm = new SettingsViewModel(_settings, SetStatus)

@@ -1,0 +1,220 @@
+<UserControl x:Class="BitBroom.App.Views.DupesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:anim="clr-namespace:BitBroom.App.Animations"
+             xmlns:controls="clr-namespace:BitBroom.App.Controls"
+             anim:Anim.Transition="SlideFade">
+  <Grid DataContext="{Binding Dupes}">
+    <Grid Margin="28,20,28,20">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- Header -->
+      <Grid Grid.Row="0">
+        <StackPanel>
+          <TextBlock Text="Duplicates" Style="{StaticResource Text.Title}"/>
+          <TextBlock Style="{StaticResource Text.Subtitle}" Margin="0,6,0,0"
+                     Text="{Binding ModeHint}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+          <ui:Button Content="Cancel" Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+          <ui:Button Content="Scan" Appearance="Primary" Command="{Binding ScanCommand}" MinWidth="110">
+            <ui:Button.Icon>
+              <ui:SymbolIcon Symbol="CopySelect24"/>
+            </ui:Button.Icon>
+          </ui:Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Options row + progress -->
+      <StackPanel Grid.Row="1" Margin="0,14,0,10">
+        <Grid>
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <RadioButton Content="Duplicate files" IsChecked="{Binding DupesMode}" GroupName="DupesMode"
+                         Margin="0,0,14,0"/>
+            <RadioButton Content="Empty folders" IsChecked="{Binding EmptyFoldersMode}" GroupName="DupesMode"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <ComboBox ItemsSource="{Binding ScanRootChoices}" IsEditable="True"
+                      Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" MinWidth="260" Margin="0,0,8,0"/>
+            <ui:Button Content="Browse…" Command="{Binding BrowseCommand}" Margin="0,0,8,0"/>
+            <ComboBox SelectedIndex="{Binding MinSizeIndex}" MinWidth="130"
+                      Visibility="{Binding DupesMode, Converter={StaticResource BoolToVis}}"
+                      ToolTip="Smallest file size worth comparing">
+              <ComboBoxItem Content="All sizes"/>
+              <ComboBoxItem Content="≥ 1 MB"/>
+              <ComboBoxItem Content="≥ 10 MB"/>
+              <ComboBoxItem Content="≥ 100 MB"/>
+            </ComboBox>
+          </StackPanel>
+        </Grid>
+
+        <controls:ShimmerBar Margin="0,12,0,0"
+                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+        <TextBlock Text="{Binding ProgressText}" FontSize="12" Foreground="{StaticResource Brush.Accent}" Margin="0,6,0,0"
+                   Visibility="{Binding ProgressText, Converter={StaticResource NullToVis}}"/>
+        <Grid Margin="0,8,0,0" Visibility="{Binding SummaryText, Converter={StaticResource NullToVis}}">
+          <TextBlock Text="{Binding SummaryText}" FontSize="12.5"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+          <ui:Button Content="Open audit log" Appearance="Transparent" Command="{Binding OpenLogCommand}"
+                     HorizontalAlignment="Right" VerticalAlignment="Center"
+                     Visibility="{Binding ResultLogPath, Converter={StaticResource NullToVis}}"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- Results -->
+      <ui:Card Grid.Row="2" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
+        <Grid>
+          <!-- Duplicate groups -->
+          <ListBox ItemsSource="{Binding Groups}"
+                   Visibility="{Binding DupesMode, Converter={StaticResource BoolToVis}}"
+                   ScrollViewer.CanContentScroll="True"
+                   VirtualizingPanel.ScrollUnit="Pixel"
+                   VirtualizingPanel.VirtualizationMode="Recycling"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   Background="Transparent" BorderThickness="0"
+                   ItemContainerStyle="{StaticResource BareListBoxItem}"
+                   anim:Anim.SmoothScroll="True">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border CornerRadius="6" Padding="10,8" Margin="2,3,10,3"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}">
+                  <StackPanel>
+                    <TextBlock Text="{Binding HeaderText}" FontSize="12.5" FontWeight="SemiBold"
+                               Foreground="{StaticResource Brush.Accent}"/>
+                    <ItemsControl ItemsSource="{Binding Files}" Margin="0,6,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid Margin="0,3">
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="*"/>
+                              <ColumnDefinition Width="Auto"/>
+                              <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Margin="8,0,10,0" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis"/>
+                              <TextBlock Text="{Binding Directory}" Style="{StaticResource Text.Caption}"
+                                         TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="2" Text="{Binding ModifiedText}" FontSize="11.5"
+                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ui:Button Grid.Column="3" Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
+                                       Command="{Binding DataContext.Dupes.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                       CommandParameter="{Binding}" Margin="0,0,6,0">
+                              <ui:Button.Icon>
+                                <ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/>
+                              </ui:Button.Icon>
+                            </ui:Button>
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <!-- Empty folders -->
+          <ListBox ItemsSource="{Binding EmptyFolders}"
+                   Visibility="{Binding EmptyFoldersMode, Converter={StaticResource BoolToVis}}"
+                   ScrollViewer.CanContentScroll="True"
+                   VirtualizingPanel.ScrollUnit="Pixel"
+                   VirtualizingPanel.VirtualizationMode="Recycling"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   Background="Transparent" BorderThickness="0"
+                   ItemContainerStyle="{StaticResource BareListBoxItem}"
+                   anim:Anim.SmoothScroll="True">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="6,3,14,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1" Margin="8,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Parent}" Style="{StaticResource Text.Caption}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                  </StackPanel>
+                  <ui:Button Grid.Column="2" Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
+                             Command="{Binding DataContext.Dupes.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             CommandParameter="{Binding}">
+                    <ui:Button.Icon>
+                      <ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/>
+                    </ui:Button.Icon>
+                  </ui:Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBlock Text="Nothing found — scan a folder to see results here."
+                     Style="{StaticResource Text.Body}" Foreground="{StaticResource Brush.Success}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Visibility="{Binding NothingFound, Converter={StaticResource BoolToVis}}"/>
+        </Grid>
+      </ui:Card>
+
+      <!-- Footer -->
+      <Grid Grid.Row="3" Margin="0,14,0,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Style="{StaticResource Text.Body}" VerticalAlignment="Center">
+            <Run Text="{Binding SelectedText, Mode=OneWay}" FontWeight="SemiBold" Foreground="{StaticResource Brush.Accent}"/>
+          </TextBlock>
+          <ui:Button Content="Keep newest" Appearance="Transparent" Command="{Binding KeepNewestCommand}" Margin="16,0,0,0"
+                     Visibility="{Binding DupesMode, Converter={StaticResource BoolToVis}}"
+                     ToolTip="Select all copies except the most recently modified in every group"/>
+          <ui:Button Content="Keep oldest" Appearance="Transparent" Command="{Binding KeepOldestCommand}" Margin="6,0,0,0"
+                     Visibility="{Binding DupesMode, Converter={StaticResource BoolToVis}}"/>
+          <ui:Button Content="Select all" Appearance="Transparent" Command="{Binding SelectAllEmptyCommand}" Margin="16,0,0,0"
+                     Visibility="{Binding EmptyFoldersMode, Converter={StaticResource BoolToVis}}"/>
+          <ui:Button Content="Clear" Appearance="Transparent" Command="{Binding ClearSelectionCommand}" Margin="6,0,0,0"/>
+        </StackPanel>
+        <ui:Button HorizontalAlignment="Right" Appearance="Primary" MinWidth="180"
+                   Content="Send to Recycle Bin" Command="{Binding RecycleCommand}">
+          <ui:Button.Icon>
+            <ui:SymbolIcon Symbol="Delete24"/>
+          </ui:Button.Icon>
+        </ui:Button>
+      </Grid>
+    </Grid>
+
+    <!-- Confirm overlay -->
+    <Grid Background="#B00A0D14" Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVis}}"
+          anim:Anim.Transition="Fade">
+      <Border MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center"
+              Background="{DynamicResource ApplicationBackgroundBrush}"
+              BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="10" Padding="24"
+              anim:Anim.Transition="ZoomFade">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource Font.Icons}" FontSize="18"
+                       Foreground="{StaticResource Brush.Warning}" VerticalAlignment="Center"/>
+            <TextBlock Text="Confirm" FontSize="17" FontWeight="SemiBold"
+                       FontFamily="{StaticResource Font.Display}"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="10,0,0,0"/>
+          </StackPanel>
+          <TextBlock Text="{Binding ConfirmText}" Style="{StaticResource Text.Body}" Margin="0,14,0,0"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <ui:Button Content="Cancel" Command="{Binding CancelConfirmCommand}" MinWidth="90" Margin="0,0,8,0"/>
+            <ui:Button Content="Recycle now" Appearance="Primary" Command="{Binding ConfirmRecycleCommand}" MinWidth="120"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

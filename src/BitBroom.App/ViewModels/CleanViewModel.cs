@@ -144,21 +144,7 @@ public sealed class CleanViewModel : ObservableObject
         _settings = settings;
         _setStatus = setStatus;
 
-        foreach (CleanCategory category in CategoryCatalog.Build())
-        {
-            var item = new CategoryItemViewModel { Category = category };
-            item.IsSelected = settings.CategorySelections.TryGetValue(category.Id, out bool remembered)
-                ? remembered && !item.AdminLocked
-                : category.EnabledByDefault && !item.AdminLocked;
-            item.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName is nameof(CategoryItemViewModel.IsSelected))
-                {
-                    OnSelectionChanged(item);
-                }
-            };
-            Categories.Add(item);
-        }
+        RebuildCategories();
 
         GroupedCategories = new ListCollectionView(Categories);
         GroupedCategories.GroupDescriptions.Add(new PropertyGroupDescription(nameof(CategoryItemViewModel.GroupName)));
@@ -255,7 +241,41 @@ public sealed class CleanViewModel : ObservableObject
     public bool SimulateOnly => _settings.SimulateOnly;
 
     /// <summary>Re-reads settings-derived state (called when the user changes Settings elsewhere).</summary>
-    public void NotifySettingsChanged() => OnPropertyChanged(nameof(SimulateOnly));
+    public void NotifySettingsChanged()
+    {
+        OnPropertyChanged(nameof(SimulateOnly));
+
+        // The custom-folders category is settings-defined: rebuild the list when its
+        // configuration changed (but never mid-scan/clean; the next rebuild catches up).
+        bool hasCustomCategory = Categories.Any(c => c.Category.Id == BitBroom.Core.Special.CustomFoldersCategory.CategoryId);
+        bool wantsCustomCategory = _settings.CustomCleanFolders.Count > 0;
+        if (hasCustomCategory != wantsCustomCategory && !_isBusy)
+        {
+            RebuildCategories();
+            HasScanned = false;
+            RecomputeSelectedBytes();
+        }
+    }
+
+    private void RebuildCategories()
+    {
+        Categories.Clear();
+        foreach (CleanCategory category in CategoryCatalog.Build(_settings))
+        {
+            var item = new CategoryItemViewModel { Category = category };
+            item.IsSelected = _settings.CategorySelections.TryGetValue(category.Id, out bool remembered)
+                ? remembered && !item.AdminLocked
+                : category.EnabledByDefault && !item.AdminLocked;
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is nameof(CategoryItemViewModel.IsSelected))
+                {
+                    OnSelectionChanged(item);
+                }
+            };
+            Categories.Add(item);
+        }
+    }
 
     // -------------------------------------------------------------------------
 
@@ -334,6 +354,11 @@ public sealed class CleanViewModel : ObservableObject
                 if (scan.SkippedReparsePoints > 0)
                 {
                     notes.Add($"{scan.SkippedReparsePoints} junctions skipped");
+                }
+
+                if (scan.SkippedExcluded > 0)
+                {
+                    notes.Add($"{scan.SkippedExcluded:N0} excluded by you");
                 }
 
                 if (scan.Inaccessible > 0)

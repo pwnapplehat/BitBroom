@@ -86,11 +86,18 @@ Simulation mode short-circuits step 3+ into log-only writes.
 | Hibernation | `powercfg /hibernate …` |
 | Windows.old | `takeown`/`icacls` then removal — with an Advanced-risk warning, off by default |
 | Analyzer deletions | `SHFileOperation` with `FOF_ALLOWUNDO` → **always Recycle Bin** |
+| Duplicate & empty-folder deletions | **Always Recycle Bin**, never permanent. One copy of every duplicate group survives — enforced in `DuplicateDeleter`, which also refuses Windows/Program Files/ProgramData/drive roots outright. Empty folders are re-verified file-free (recursively, junctions count as content) immediately before recycling. |
+| Scheduled cleaning | A per-user Task Scheduler task running `bitbroom-cli clean --yes` — the same audited, guarded pipeline; no elevation, admin categories simply skip |
 
 ## Layer 5 — the human layer
 
 - Scanning is **read-only**, always.
 - Cleaning shows a confirmation with per-risk warnings (configurable off).
+- **User exclusions** (Settings) are honored in three layers: root expansion, enumeration,
+  and a final veto inside the deleter — and by the duplicate/empty-folder finders and CLI.
+- **Custom folders** go through the same guard as shipped rules (anchored at the folder's
+  parent): protected locations are refused at scan time even if the user adds them.
+- Optional **Recycle Bin mode** routes ordinary cleans through the bin for an undo window.
 - Risk levels: **Safe** (pure caches; the only level allowed to be on-by-default — enforced
   by a test), **Moderate** (regenerable with a cost), **Advanced** (irreversible
   consequences; explicit warnings; excluded from CLI `--all`).

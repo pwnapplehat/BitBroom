@@ -40,6 +40,9 @@ public sealed class RunLogger : IDisposable
     public void Deleted(string path, long sizeBytes, bool simulated)
         => Write(simulated ? "WOULD" : "DEL  ", $"{sizeBytes,12}  {path}");
 
+    /// <summary>A file moved to the Recycle Bin (restorable until the bin is emptied).</summary>
+    public void Recycled(string path, long sizeBytes) => Write("BIN  ", $"{sizeBytes,12}  {path}");
+
     public void Skipped(string path, string reason) => Write("SKIP ", $"{reason,-12}  {path}");
 
     private void Write(string level, string message)
