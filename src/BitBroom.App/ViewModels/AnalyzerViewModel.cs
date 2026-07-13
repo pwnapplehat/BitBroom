@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using BitBroom.App.Mvvm;
 using BitBroom.Core.Analyzer;
+using BitBroom.Core.Engine;
 using BitBroom.Core.Native;
 using BitBroom.Core.Util;
 
@@ -29,6 +30,9 @@ public sealed class AnalyzerNodeViewModel : ObservableObject
     public double BarWidth => Math.Max(Share * 120, _node.SizeBytes > 0 ? 2 : 0);
     public bool WasInaccessible => _node.WasInaccessible;
 
+    /// <summary>False for drive roots and protected system/profile folders (delete icon hidden).</summary>
+    public bool CanRecycle => ManualDeleteGuard.CanDelete(_node.FullPath);
+
     /// <summary>Children materialize lazily so huge trees stay cheap for the UI.</summary>
     public ObservableCollection<AnalyzerNodeViewModel> Children
         => _children ??= [.. _node.Children.Where(c => c.SizeBytes > 0 || c.Children.Count > 0)
@@ -43,6 +47,9 @@ public sealed class LargeFileViewModel
     public string SizeText => ByteFormatter.Format(SizeBytes);
     public string Name => System.IO.Path.GetFileName(Path);
     public string Directory => System.IO.Path.GetDirectoryName(Path) ?? Path;
+
+    /// <summary>False for system-managed files (pagefile/hiberfil) and protected locations.</summary>
+    public bool CanRecycle => ManualDeleteGuard.CanDelete(Path);
 }
 
 public sealed class FileTypeViewModel
@@ -114,6 +121,20 @@ public sealed class AnalyzerViewModel : ObservableObject
             string? path = PathOf(parameter);
             if (path is null)
             {
+                return;
+            }
+
+            // Defense in depth: the delete icon is already hidden for protected locations,
+            // but re-check before doing anything so nothing slips through.
+            string? refusal = ManualDeleteGuard.Validate(path);
+            if (refusal is not null)
+            {
+                _setStatus($"Refused — {refusal}: {path}");
+                System.Windows.MessageBox.Show(
+                    $"BitBroom won't recycle this because {refusal}:\n\n{path}",
+                    "BitBroom — protected location",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
                 return;
             }
 

@@ -28,59 +28,16 @@ public sealed class DuplicateDeleter
 {
     private readonly RunLogger _logger;
 
-    /// <summary>Subtrees no duplicate/empty-folder deletion may ever touch.</summary>
-    private static readonly string[] ForbiddenSubtrees = BuildForbidden();
-
-    private static string[] BuildForbidden()
-    {
-        var list = new List<string>();
-        void Add(string? path)
-        {
-            if (!string.IsNullOrWhiteSpace(path))
-            {
-                list.Add(PathGuard.Normalize(path));
-            }
-        }
-
-        Add(Environment.GetFolderPath(Environment.SpecialFolder.Windows));
-        Add(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
-        Add(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86));
-        Add(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
-        return [.. list];
-    }
-
     public DuplicateDeleter(RunLogger logger)
     {
         _logger = logger;
     }
 
-    public static string? ValidatePath(string path)
-    {
-        string normalized;
-        try
-        {
-            normalized = PathGuard.Normalize(path);
-        }
-        catch (Exception)
-        {
-            return "path is malformed";
-        }
-
-        if (PathGuard.IsDriveRoot(normalized))
-        {
-            return "path is a drive root";
-        }
-
-        foreach (string forbidden in ForbiddenSubtrees)
-        {
-            if (PathGuard.PathsEqual(normalized, forbidden) || PathGuard.IsUnder(normalized, forbidden))
-            {
-                return "path is inside a protected system location";
-            }
-        }
-
-        return null;
-    }
+    /// <summary>
+    /// Delegates to the shared <see cref="ManualDeleteGuard"/> so the Duplicates and
+    /// Analyzer tabs enforce exactly the same protected-location policy.
+    /// </summary>
+    public static string? ValidatePath(string path) => ManualDeleteGuard.Validate(path);
 
     /// <summary>
     /// Recycles the selected files of each group. A group whose selection covers every

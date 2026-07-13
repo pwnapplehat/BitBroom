@@ -83,6 +83,7 @@
                              Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                   <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="10,0,16,0">
                     <ui:Button Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
+                               AutomationProperties.Name="Open in Explorer"
                                Command="{Binding DataContext.Analyzer.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                CommandParameter="{Binding}">
                       <ui:Button.Icon>
@@ -90,6 +91,8 @@
                       </ui:Button.Icon>
                     </ui:Button>
                     <ui:Button Appearance="Transparent" Padding="6,4" ToolTip="Send to Recycle Bin…"
+                               AutomationProperties.Name="Send to Recycle Bin"
+                               Visibility="{Binding CanRecycle, Converter={StaticResource BoolToVis}}"
                                Command="{Binding DataContext.Analyzer.RecycleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                CommandParameter="{Binding}">
                       <ui:Button.Icon>
@@ -145,6 +148,7 @@
                                Foreground="{DynamicResource TextFillColorPrimaryBrush}" VerticalAlignment="Center" Margin="10,0"/>
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
                       <ui:Button Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
+                                 AutomationProperties.Name="Open in Explorer"
                                  Command="{Binding DataContext.Analyzer.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                  CommandParameter="{Binding}">
                         <ui:Button.Icon>
@@ -152,6 +156,8 @@
                         </ui:Button.Icon>
                       </ui:Button>
                       <ui:Button Appearance="Transparent" Padding="6,4" ToolTip="Send to Recycle Bin…"
+                                 AutomationProperties.Name="Send to Recycle Bin"
+                                 Visibility="{Binding CanRecycle, Converter={StaticResource BoolToVis}}"
                                  Command="{Binding DataContext.Analyzer.RecycleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                  CommandParameter="{Binding}">
                         <ui:Button.Icon>
