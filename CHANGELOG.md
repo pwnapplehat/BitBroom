@@ -21,7 +21,8 @@ All notable changes to BitBroom are documented here. Format follows
 - In-app updates: optional once-per-launch GitHub release check (Settings → Updates,
   on by default, disable for zero network requests) with a banner offering one-click
   install — the installer is SHA-256-verified against the release's SHA256SUMS.txt
-  before it runs silently and restarts the app.
+  before it runs. The installer shows a visible progress window and surfaces any error,
+  installs per-user (no UAC), and restarts the app when done.
 - Removed the now-redundant hand-rolled chrome (caption buttons, nav rail, control
   templates, DWM interop).
 

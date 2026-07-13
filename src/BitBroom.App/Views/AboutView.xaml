@@ -25,6 +25,21 @@
                    Text="1. Safety beats free space — a guard validates every path twice, junctions are never followed, user content is untouchable by design.&#x0a;2. Honesty beats marketing — no registry cleaner, no 'RAM optimizer', no fake speed claims. When a fix belongs to Windows (DISM, powercfg), BitBroom runs the official tool and shows you its output.&#x0a;3. Transparency beats trust-me — open source, audit logs for every deletion, simulation mode, no telemetry (the only network touch is the optional update check in Settings)."/>
       </ui:Card>
 
+      <TextBlock Text="CREDITS" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="Made by" Style="{StaticResource Text.Body}"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" VerticalAlignment="Center"/>
+            <TextBlock Text="iOS_hAT" FontFamily="{StaticResource Font.Display}" FontSize="15" FontWeight="SemiBold"
+                       Foreground="{StaticResource Brush.Accent}" VerticalAlignment="Center" Margin="6,0,0,0"/>
+          </StackPanel>
+          <TextBlock Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}"
+                     Text="Open source and community-driven — contributions welcome on GitHub."/>
+        </StackPanel>
+      </ui:Card>
+
       <TextBlock Text="LICENSE" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
       <ui:Card>
         <TextBlock Style="{StaticResource Text.Body}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"

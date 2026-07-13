@@ -193,18 +193,21 @@ public static class UpdateService
     }
 
     /// <summary>
-    /// Starts the verified installer silently. The caller must shut the app down right
-    /// after so the installer (which waits on the app's single-instance mutex) can
-    /// replace the binaries; it relaunches BitBroom when done.
+    /// Starts the verified installer and returns its process handle. The caller shuts the
+    /// app down right after so the installer (which waits on the app's single-instance
+    /// mutex) can replace the binaries; it relaunches BitBroom when done.
+    ///
+    /// Uses /SILENT (not /VERYSILENT): Inno Setup shows its own progress window during the
+    /// install and surfaces any error as a visible message box, so the user always sees
+    /// what is happening and a mid-install failure is never hidden. The per-user installer
+    /// needs no elevation, so no UAC prompt appears.
     /// </summary>
-    public static void LaunchInstaller(string installerPath)
+    public static System.Diagnostics.Process? LaunchInstaller(string installerPath)
     {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        return System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = installerPath,
-            // VERYSILENT + SUPPRESSMSGBOXES: no UI at all. The per-user installer needs no
-            // elevation; AppMutex makes it wait for this instance to exit, then it relaunches.
-            Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS",
+            Arguments = "/SILENT /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS",
             UseShellExecute = true,
         });
     }

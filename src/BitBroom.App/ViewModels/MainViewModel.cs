@@ -179,16 +179,25 @@ public sealed class MainViewModel : ObservableObject
 
             string installer = await UpdateService.DownloadVerifiedInstallerAsync(update, progress);
 
-            UpdateBannerText = "Verified. Installing — BitBroom will restart…";
-            UpdateService.LaunchInstaller(installer);
+            UpdateBannerText = "Verified. Launching the installer — it will show progress and restart BitBroom…";
+
+            System.Diagnostics.Process? process = UpdateService.LaunchInstaller(installer);
+            if (process is null)
+            {
+                throw new InvalidOperationException("The installer could not be started.");
+            }
+
+            // The installer's own progress window now takes over; the app must exit so it
+            // can replace the locked binaries (AppMutex makes it wait for us), and the
+            // installer relaunches BitBroom when it finishes.
             System.Windows.Application.Current.Shutdown();
         }
         catch (Exception ex)
         {
             _updateInProgress = false;
             InstallUpdateCommand.RaiseCanExecuteChanged();
-            UpdateBannerText = $"Update failed: {ex.Message} — you can install it manually from the release page.";
-            SetStatus("Update failed — nothing was changed.");
+            UpdateBannerText = $"Update failed: {ex.Message} — you can still install it manually from the release page (What's new).";
+            SetStatus("Update failed — nothing was changed, your current version is intact.");
         }
     }
 
