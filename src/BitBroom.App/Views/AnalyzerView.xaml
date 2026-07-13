@@ -81,7 +81,7 @@
                   </Grid>
                   <TextBlock Grid.Column="2" Text="{Binding SizeText}" FontSize="12.5" FontWeight="SemiBold"
                              Foreground="{DynamicResource TextFillColorPrimaryBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                  <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="10,0,4,0">
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="10,0,16,0">
                     <ui:Button Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
                                Command="{Binding DataContext.Analyzer.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                CommandParameter="{Binding}">
