@@ -235,6 +235,42 @@ public class DuplicateAndEmptyFolderTests
     }
 
     [SkippableRecycleFact]
+    public void SafeDeleter_recycle_mode_sends_files_to_the_bin()
+    {
+        using var sandbox = new TestSandbox();
+        string cache = sandbox.CreateDirectory("cache");
+        string file = WriteFile(sandbox, "cache\\junk.tmp", Pattern(8, 512));
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-10));
+
+        using RunLogger logger = NullLogger();
+        var deleter = new SafeDeleter(new PathGuard(), logger, DeleteMode.RecycleBin);
+
+        DeleteOutcome outcome = deleter.DeleteFile(
+            new ScanItem(file, 512, DateTime.UtcNow.AddDays(-10), cache));
+
+        Assert.Equal(DeleteOutcome.Deleted, outcome);
+        Assert.False(File.Exists(file), "file should be in the Recycle Bin, not at its origin");
+    }
+
+    [SkippableRecycleFact]
+    public void SafeDeleter_recycle_mode_handles_readonly_files()
+    {
+        using var sandbox = new TestSandbox();
+        string cache = sandbox.CreateDirectory("cache");
+        string file = WriteFile(sandbox, "cache\\ro.tmp", Pattern(9, 256));
+        File.SetAttributes(file, FileAttributes.ReadOnly);
+
+        using RunLogger logger = NullLogger();
+        var deleter = new SafeDeleter(new PathGuard(), logger, DeleteMode.RecycleBin);
+
+        DeleteOutcome outcome = deleter.DeleteFile(
+            new ScanItem(file, 256, DateTime.UtcNow.AddDays(-10), cache));
+
+        Assert.Equal(DeleteOutcome.Deleted, outcome);
+        Assert.False(File.Exists(file));
+    }
+
+    [SkippableRecycleFact]
     public void Nested_empty_folders_recycle_deepest_first()
     {
         using var sandbox = new TestSandbox();

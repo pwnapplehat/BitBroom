@@ -153,21 +153,11 @@ public sealed class AnalyzerViewModel : ObservableObject
 
         try
         {
-            var sb = new System.Text.StringBuilder();
-            static string Quote(string s) => "\"" + s.Replace("\"", "\"\"") + "\"";
+            var largest = LargestFiles.Select(f => new LargeFile(f.Path, f.SizeBytes, DateTime.MinValue));
+            var types = FileTypes.Select(t => t.Stat);
+            string csv = AnalyzerCsv.Build(largest, types);
 
-            sb.AppendLine("Section,Name,Path,SizeBytes,FileCount");
-            foreach (LargeFileViewModel file in LargestFiles)
-            {
-                sb.AppendLine($"LargestFile,{Quote(file.Name)},{Quote(file.Path)},{file.SizeBytes},1");
-            }
-
-            foreach (FileTypeViewModel type in FileTypes)
-            {
-                sb.AppendLine($"FileType,{Quote(type.Extension)},,{type.Stat.TotalBytes},{type.Stat.FileCount}");
-            }
-
-            File.WriteAllText(dialog.FileName, sb.ToString(), System.Text.Encoding.UTF8);
+            File.WriteAllText(dialog.FileName, csv, System.Text.Encoding.UTF8);
             _setStatus($"Exported analysis to {dialog.FileName}");
         }
         catch (Exception ex)
