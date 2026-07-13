@@ -26,19 +26,28 @@ public static class Anim
     // =========================================================================
     // Display refresh rate — WPF ticks animations at 60fps by default, which looks
     // subtly choppy on high-refresh monitors (120/144/180Hz). Every animation this
-    // toolkit creates asks for the panel's real refresh rate instead.
+    // toolkit creates asks for the real refresh rate of the monitor the app window
+    // is currently on. Cached briefly so wheel-rate queries stay free, but still
+    // tracking monitor moves and display-settings changes.
     // =========================================================================
 
+    private static readonly TimeSpan RefreshRateCacheTtl = TimeSpan.FromSeconds(5);
     private static int _displayRefreshRate;
+    private static long _refreshRateExpiryTicks;
 
-    /// <summary>Primary display refresh rate in Hz (clamped 60–240; 60 on failure).</summary>
+    /// <summary>
+    /// Refresh rate (Hz) of the monitor hosting the main window, clamped 60–240.
+    /// Falls back to the primary display, then to WPF's default 60.
+    /// </summary>
     public static int DisplayRefreshRate
     {
         get
         {
-            if (_displayRefreshRate == 0)
+            long now = Environment.TickCount64;
+            if (_displayRefreshRate == 0 || now >= _refreshRateExpiryTicks)
             {
                 _displayRefreshRate = QueryDisplayRefreshRate();
+                _refreshRateExpiryTicks = now + (long)RefreshRateCacheTtl.TotalMilliseconds;
             }
 
             return _displayRefreshRate;
@@ -52,6 +61,18 @@ public static class Anim
             var mode = default(DEVMODE);
             mode.dmSize = (ushort)Marshal.SizeOf<DEVMODE>();
             const int ENUM_CURRENT_SETTINGS = -1;
+
+            // Prefer the monitor the app window actually lives on (multi-monitor
+            // setups routinely mix 60/144/180Hz panels).
+            string? device = GetCurrentWindowMonitorDevice();
+            if (device is not null
+                && EnumDisplaySettings(device, ENUM_CURRENT_SETTINGS, ref mode)
+                && mode.dmDisplayFrequency >= 60)
+            {
+                return Math.Min((int)mode.dmDisplayFrequency, 240);
+            }
+
+            // Fall back to the primary display.
             if (EnumDisplaySettings(null, ENUM_CURRENT_SETTINGS, ref mode) && mode.dmDisplayFrequency >= 60)
             {
                 return Math.Min((int)mode.dmDisplayFrequency, 240);
@@ -65,6 +86,40 @@ public static class Anim
         return 60;
     }
 
+    /// <summary>Device name (e.g. \\.\DISPLAY2) of the monitor hosting the main window.</summary>
+    private static string? GetCurrentWindowMonitorDevice()
+    {
+        try
+        {
+            Window? window = Application.Current?.MainWindow;
+            if (window is null)
+            {
+                return null;
+            }
+
+            IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+            if (hwnd == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            const uint MONITOR_DEFAULTTONEAREST = 2;
+            IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            var info = default(MONITORINFOEX);
+            info.cbSize = Marshal.SizeOf<MONITORINFOEX>();
+            return GetMonitorInfo(monitor, ref info) ? info.szDevice : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Applies the display-matched frame rate to an animation/storyboard.</summary>
     public static T AtDisplayRate<T>(T timeline)
         where T : Timeline
@@ -75,6 +130,29 @@ public static class Anim
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool EnumDisplaySettings(string? deviceName, int modeNum, ref DEVMODE devMode);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct MONITORINFOEX
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string szDevice;
+    }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct DEVMODE
