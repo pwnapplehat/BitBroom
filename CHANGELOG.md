@@ -3,6 +3,29 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.1] — 2026-07-13
+
+### Changed
+- **Tools page redesigned around discoverability**: instead of a strip of bare buttons,
+  every tool is now a card with a plain-language description of what it does, what you
+  gain, and any caveat — plus an **Admin badge** on tools that need elevation. Tools are
+  grouped (Storage & disks / Hibernation & power / Quick fixes) with the live output
+  console docked alongside, so you can read what a tool is while another one runs.
+
+### Fixed
+- **WSL fstrim step actually runs now.** The distro name was passed quoted, which
+  `wsl.exe` rejects (`WSL_E_DISTRO_NOT_FOUND`), so the trim silently fell back to
+  "skipped" and compaction reclaimed less than it should. Names are now passed unquoted
+  (with a safety skip for exotic names containing whitespace).
+- `wsl.exe` output is now decoded as UTF-16, so its messages appear correctly in the
+  Tools console instead of as spaced-out garbage.
+
+### Verified
+- Full **Compact WSL / Docker disks** flow exercised on a real machine (Ubuntu +
+  Docker Desktop): trims ran in both distros, all three `.vhdx` disks compacted
+  (~1.2 GB reclaimed), Ubuntu booted normally afterwards and Docker Desktop relaunched.
+- All README screenshots retaken, including the redesigned Tools page.
+
 ## [1.2.0] — 2026-07-13
 
 Driven by a second deep research pass across Reddit, Microsoft Q&A and the Docker/WSL

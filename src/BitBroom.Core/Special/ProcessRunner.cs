@@ -16,8 +16,14 @@ public static class ProcessRunner
         string arguments,
         TimeSpan? timeout = null,
         Action<string>? onOutputLine = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Encoding? outputEncoding = null)
     {
+        // wsl.exe writes UTF-16LE to redirected pipes; everything else we run is UTF-8.
+        outputEncoding ??= fileName.EndsWith("wsl.exe", StringComparison.OrdinalIgnoreCase)
+            ? Encoding.Unicode
+            : Encoding.UTF8;
+
         var psi = new ProcessStartInfo
         {
             FileName = fileName,
@@ -26,8 +32,8 @@ public static class ProcessRunner
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
+            StandardOutputEncoding = outputEncoding,
+            StandardErrorEncoding = outputEncoding,
         };
 
         using var process = new Process { StartInfo = psi };

@@ -7,90 +7,91 @@
   <Grid Margin="28,20,28,20" DataContext="{Binding Tools}">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="Tools" Style="{StaticResource Text.Title}"/>
       <TextBlock Style="{StaticResource Text.Subtitle}" Margin="0,6,0,0"
-                 Text="Supported, documented maintenance actions. Each runs the official Windows mechanism (DISM, powercfg, vssadmin) and shows its output below."/>
+                 Text="Supported, documented maintenance actions. Every tool explains what it does before you run it; each runs the official Windows mechanism (DISM, diskpart, pnputil, powercfg…) and streams its output on the right."/>
     </StackPanel>
 
-    <WrapPanel Grid.Row="1" Margin="0,16,0,0">
-      <WrapPanel.Resources>
-        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
-          <Setter Property="Margin" Value="0,0,10,10"/>
-        </Style>
-      </WrapPanel.Resources>
-      <ui:Button Content="Flush DNS cache" Command="{Binding FlushDnsCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="Globe24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Restart Explorer" Command="{Binding RestartExplorerCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="ArrowClockwise24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Analyze component store" Command="{Binding AnalyzeWinSxSCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="DocumentSearch24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Component store cleanup (DISM)" Command="{Binding CleanWinSxSCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="Broom24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="System Restore usage" Command="{Binding ListShadowStorageCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="History24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Disable hibernation" Command="{Binding DisableHibernationCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="WeatherMoon24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Shrink hiberfil (keep Fast Startup)" Command="{Binding ReduceHibernationCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="ArrowMinimize24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Enable hibernation" Command="{Binding EnableHibernationCommand}">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="Flash24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Compact WSL / Docker disks" Command="{Binding CompactVirtualDisksCommand}"
-                 ToolTip="Reclaim empty space from WSL/Docker virtual disks (non-destructive; quit Docker Desktop first)">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="Box24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Free up OneDrive space" Command="{Binding FreeUpOneDriveCommand}"
-                 ToolTip="Make OneDrive files online-only (nothing deleted; re-downloads on open)">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="Cloud24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-      <ui:Button Content="Remove old drivers" Command="{Binding RemoveOldDriversCommand}"
-                 ToolTip="Remove superseded driver versions; keeps the newest of each and never touches in-use drivers">
-        <ui:Button.Icon>
-          <ui:SymbolIcon Symbol="DeveloperBoard24"/>
-        </ui:Button.Icon>
-      </ui:Button>
-    </WrapPanel>
+    <Grid Grid.Row="1" Margin="0,16,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="23*"/>
+        <ColumnDefinition Width="17*"/>
+      </Grid.ColumnDefinitions>
 
-    <ui:Card Grid.Row="2" Padding="4" Margin="0,6,0,0" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
-      <ScrollViewer x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto">
-        <TextBox Text="{Binding ConsoleText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
-                 FontFamily="Cascadia Mono, Consolas" FontSize="12"
-                 Background="Transparent" BorderThickness="0"
-                 Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                 TextChanged="OnConsoleTextChanged"/>
+      <!-- Tool list: grouped rows with description + admin badge + Run -->
+      <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,14,0"
+                    anim:Anim.SmoothScroll="True">
+        <ItemsControl ItemsSource="{Binding Groups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,0,6,14">
+                <TextBlock Text="{Binding Header}" FontSize="11.5" FontWeight="SemiBold"
+                           Foreground="{StaticResource Brush.Accent}" Margin="2,0,0,6"
+                           Typography.Capitals="AllSmallCaps"/>
+                <ItemsControl ItemsSource="{Binding Tools}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <ui:Card Padding="12,10" Margin="0,0,0,6" VerticalContentAlignment="Stretch">
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                          </Grid.ColumnDefinitions>
+                          <ui:SymbolIcon Grid.Column="0" Symbol="{Binding Symbol}" FontSize="19"
+                                         Foreground="{StaticResource Brush.Accent}"
+                                         VerticalAlignment="Top" Margin="0,2,12,0"/>
+                          <StackPanel Grid.Column="1" Margin="0,0,12,0">
+                            <StackPanel Orientation="Horizontal">
+                              <TextBlock Text="{Binding Title}" FontSize="13.5" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+                              <Border Style="{StaticResource Badge}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                      Visibility="{Binding RequiresAdmin, Converter={StaticResource BoolToVis}}"
+                                      ToolTip="Needs administrator rights — use “Restart as administrator” in the banner">
+                                <TextBlock Text="Admin" FontSize="10"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                              </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding Description}" FontSize="11.5" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       Margin="0,3,0,0" LineHeight="16"/>
+                          </StackPanel>
+                          <ui:Button Grid.Column="2" Content="Run" MinWidth="64" VerticalAlignment="Center"
+                                     Command="{Binding Command}"
+                                     AutomationProperties.Name="{Binding Title}"/>
+                        </Grid>
+                      </ui:Card>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </ScrollViewer>
-    </ui:Card>
+
+      <!-- Live output console -->
+      <ui:Card Grid.Column="1" Padding="4" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <TextBlock Grid.Row="0" Text="OUTPUT" FontSize="10.5" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="10,8,0,4"/>
+          <ScrollViewer Grid.Row="1" x:Name="ConsoleScroll" VerticalScrollBarVisibility="Auto">
+            <TextBox Text="{Binding ConsoleText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                     FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                     Background="Transparent" BorderThickness="0"
+                     Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                     TextChanged="OnConsoleTextChanged"/>
+          </ScrollViewer>
+        </Grid>
+      </ui:Card>
+    </Grid>
   </Grid>
 </UserControl>

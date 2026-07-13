@@ -143,9 +143,19 @@ public static class SystemTools
         foreach (string distro in ListWslDistros())
         {
             ct.ThrowIfCancellationRequested();
+
+            // wsl.exe treats a quoted distro name as containing literal quotes, so the name
+            // must be passed unquoted — and therefore a name with whitespace can't be passed
+            // safely. Registered names are normally space-free; skip any exotic exception.
+            if (distro.Any(char.IsWhiteSpace))
+            {
+                onLine?.Invoke($"  '{distro}' trim skipped (name contains spaces).");
+                continue;
+            }
+
             onLine?.Invoke($"Trimming free space inside '{distro}' (fstrim)…");
             ProcessResult trim = await ProcessRunner.RunAsync(
-                "wsl.exe", $"-d \"{distro}\" -u root fstrim -a", TimeSpan.FromMinutes(5), null, ct)
+                "wsl.exe", $"-d {distro} -u root fstrim -a", TimeSpan.FromMinutes(5), null, ct)
                 .ConfigureAwait(false);
             onLine?.Invoke(trim.Success
                 ? $"  '{distro}' trimmed."
