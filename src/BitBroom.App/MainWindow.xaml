@@ -5,7 +5,7 @@
         xmlns:views="clr-namespace:BitBroom.App.Views"
         xmlns:anim="clr-namespace:BitBroom.App.Animations"
         Title="BitBroom"
-        Width="1280" Height="820" MinWidth="1080" MinHeight="680"
+        Width="1400" Height="910" MinWidth="1080" MinHeight="680"
         WindowStartupLocation="CenterScreen"
         WindowBackdropType="None"
         WindowCornerPreference="Round"

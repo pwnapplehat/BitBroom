@@ -32,6 +32,8 @@ public partial class MainWindow : FluentWindow
         var viewModel = new MainViewModel();
         DataContext = viewModel;
 
+        FitToWorkArea();
+
         RootNavigation.SetPageProviderService(new PageService(viewModel));
         viewModel.NavigateRequested += tab => NavigateToTab(tab);
 
@@ -62,6 +64,27 @@ public partial class MainWindow : FluentWindow
                 }
             }
         };
+    }
+
+    /// <summary>
+    /// Keeps the generous default size on big monitors but shrinks it to fit smaller
+    /// screens (e.g. a 1366×768 laptop can't show a 910px-tall window). Work area is in
+    /// device-independent units and already excludes the taskbar, so this is DPI-correct.
+    /// </summary>
+    private void FitToWorkArea()
+    {
+        Rect work = SystemParameters.WorkArea;
+        if (work.Width <= 0 || work.Height <= 0)
+        {
+            return;
+        }
+
+        // Leave a small margin so the window never touches the screen edges.
+        double maxWidth = work.Width * 0.96;
+        double maxHeight = work.Height * 0.96;
+
+        Width = Math.Max(MinWidth, Math.Min(Width, maxWidth));
+        Height = Math.Max(MinHeight, Math.Min(Height, maxHeight));
     }
 
     protected override void OnSourceInitialized(EventArgs e)
