@@ -87,7 +87,7 @@ Simulation mode short-circuits step 3+ into log-only writes.
 | Windows.old | `takeown`/`icacls` then removal — with an Advanced-risk warning, off by default |
 | Analyzer deletions | `SHFileOperation` with `FOF_ALLOWUNDO` → **always Recycle Bin** |
 | Duplicate & empty-folder deletions | **Always Recycle Bin**, never permanent. One copy of every duplicate group survives — enforced in `DuplicateDeleter`, which also refuses Windows/Program Files/ProgramData/drive roots outright. Empty folders are re-verified file-free (recursively, junctions count as content) immediately before recycling. |
-| Scheduled cleaning | A per-user Task Scheduler task running `bitbroom-cli clean --yes` — the same audited, guarded pipeline; no elevation, admin categories simply skip |
+| Scheduled cleaning | A per-user Task Scheduler task running `bitbroom-cli clean --yes` — the same audited, guarded pipeline; no elevation, admin categories simply skip. BitBroom needs no background process or startup entry (Windows launches the CLI); registered from XML with StartWhenAvailable + run-on-battery so a missed run catches up |
 
 ## Layer 5 — the human layer
 

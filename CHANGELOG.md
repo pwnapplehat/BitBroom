@@ -3,6 +3,15 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.1.3] — 2026-07-13
+
+### Changed
+- **Scheduled cleaning is now registered from a Task Scheduler XML definition** with
+  `StartWhenAvailable` (a run missed because the PC was off/asleep catches up next time
+  it's on) and run-on-battery enabled, instead of a bare `schtasks /Create`. BitBroom still
+  needs no background process or startup entry — the reassurance is now also in the
+  Settings copy. Verified end-to-end that the task fires and cleans with the app closed.
+
 ## [1.1.2] — 2026-07-13
 
 ### Fixed

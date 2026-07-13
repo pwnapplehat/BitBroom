@@ -1,4 +1,4 @@
-using BitBroom.Core.Settings;
+using System.Text;
 
 namespace BitBroom.Core.Special;
 
@@ -12,11 +12,16 @@ public enum ScheduleFrequency
 public sealed record ScheduleState(bool Exists, string? Summary);
 
 /// <summary>
-/// Windows Task Scheduler integration for automatic cleaning. Creates a per-user task
-/// (no elevation required) that runs the CLI's default safe set with the user's saved
-/// settings: 'bitbroom-cli clean --yes'. Admin-only categories are simply skipped when
-/// the task runs unelevated — the CLI already handles that. schtasks.exe is the
-/// documented, supported interface; no COM interop, no third-party dependency.
+/// Windows Task Scheduler integration for automatic cleaning. Registers a per-user task
+/// (no elevation, no stored password — runs under the interactive token when you're logged
+/// on) that runs the CLI's default safe set: 'bitbroom-cli clean --yes'. Admin-only
+/// categories are simply skipped when it runs unelevated — the CLI handles that.
+///
+/// BitBroom itself does NOT need to be running and needs no startup entry: the Windows
+/// Task Scheduler service launches the CLI at the scheduled time on its own. The task is
+/// registered from an XML definition so it is reliable in the real world — it runs on
+/// battery and catches up a missed run (StartWhenAvailable) if the PC was off/asleep at
+/// the scheduled time, rather than silently waiting a whole cycle.
 /// </summary>
 public static class ScheduledCleaning
 {
@@ -52,27 +57,140 @@ public static class ScheduledCleaning
         }
 
         hour = Math.Clamp(hour, 0, 23);
-        string time = $"{hour:00}:00";
+        string xml = BuildTaskXml(cli, frequency, weeklyDay, hour);
 
-        string schedule = frequency switch
+        // Register from an XML file: the only way to set StartWhenAvailable / battery
+        // behaviour that plain 'schtasks /Create' switches cannot express.
+        string xmlPath = Path.Combine(Path.GetTempPath(), $"bitbroom-task-{Guid.NewGuid():N}.xml");
+        try
         {
-            ScheduleFrequency.Daily => "/SC DAILY",
-            ScheduleFrequency.Weekly => $"/SC WEEKLY /D {DayFlag(weeklyDay)}",
-            ScheduleFrequency.Monthly => "/SC MONTHLY /D 1",
-            _ => "/SC WEEKLY /D SUN",
+            // Task Scheduler XML must be UTF-16 with a BOM.
+            await File.WriteAllTextAsync(xmlPath, xml, new UnicodeEncoding(bigEndian: false, byteOrderMark: true), ct)
+                .ConfigureAwait(false);
+
+            string arguments = $"/Create /TN \"{TaskName}\" /XML \"{xmlPath}\" /F";
+            ProcessResult result = await ProcessRunner.RunAsync("schtasks.exe", arguments, TimeSpan.FromSeconds(30), null, ct)
+                .ConfigureAwait(false);
+
+            return result.Success
+                ? (true, $"Scheduled: {Describe(frequency, weeklyDay, hour)}. Runs even if BitBroom is closed; no startup entry needed.")
+                : (false, $"Task Scheduler refused: {FirstLine(result.Error, result.Output)}");
+        }
+        finally
+        {
+            try
+            {
+                File.Delete(xmlPath);
+            }
+            catch (Exception)
+            {
+                // Temp file cleanup is best-effort.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds a Task Scheduler 1.2 XML definition: interactive per-user token (no stored
+    /// password, no elevation), runs on battery, and catches up a missed run when the PC
+    /// is next available.
+    /// </summary>
+    private static string BuildTaskXml(string cliPath, ScheduleFrequency frequency, DayOfWeek weeklyDay, int hour)
+    {
+        // A fixed, past start date keeps the trigger valid; only the time-of-day matters.
+        string start = $"2020-01-01T{hour:00}:00:00";
+        string user = $"{Environment.UserDomainName}\\{Environment.UserName}";
+
+        string trigger = frequency switch
+        {
+            ScheduleFrequency.Daily =>
+                $"""
+                    <CalendarTrigger>
+                      <StartBoundary>{start}</StartBoundary>
+                      <Enabled>true</Enabled>
+                      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
+                    </CalendarTrigger>
+                """,
+            ScheduleFrequency.Monthly =>
+                $"""
+                    <CalendarTrigger>
+                      <StartBoundary>{start}</StartBoundary>
+                      <Enabled>true</Enabled>
+                      <ScheduleByMonth>
+                        <DaysOfMonth><Day>1</Day></DaysOfMonth>
+                        <Months><January/><February/><March/><April/><May/><June/><July/><August/><September/><October/><November/><December/></Months>
+                      </ScheduleByMonth>
+                    </CalendarTrigger>
+                """,
+            _ =>
+                $"""
+                    <CalendarTrigger>
+                      <StartBoundary>{start}</StartBoundary>
+                      <Enabled>true</Enabled>
+                      <ScheduleByWeek>
+                        <DaysOfWeek><{DayElement(weeklyDay)}/></DaysOfWeek>
+                        <WeeksInterval>1</WeeksInterval>
+                      </ScheduleByWeek>
+                    </CalendarTrigger>
+                """,
         };
 
-        // /F replaces an existing task of the same name; per-user (no /RU, no /RL HIGHEST).
-        string arguments =
-            $"/Create /TN \"{TaskName}\" /TR \"\\\"{cli}\\\" clean --yes\" {schedule} /ST {time} /F";
-
-        ProcessResult result = await ProcessRunner.RunAsync("schtasks.exe", arguments, TimeSpan.FromSeconds(30), null, ct)
-            .ConfigureAwait(false);
-
-        return result.Success
-            ? (true, $"Scheduled: {Describe(frequency, weeklyDay, hour)}.")
-            : (false, $"Task Scheduler refused: {FirstLine(result.Error, result.Output)}");
+        return $"""
+            <?xml version="1.0" encoding="UTF-16"?>
+            <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+              <RegistrationInfo>
+                <Description>BitBroom automatic clean of the safe default category set.</Description>
+                <URI>\{TaskName}</URI>
+              </RegistrationInfo>
+              <Triggers>
+            {trigger}
+              </Triggers>
+              <Principals>
+                <Principal id="Author">
+                  <UserId>{XmlEscape(user)}</UserId>
+                  <LogonType>InteractiveToken</LogonType>
+                  <RunLevel>LeastPrivilege</RunLevel>
+                </Principal>
+              </Principals>
+              <Settings>
+                <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+                <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+                <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+                <AllowHardTerminate>true</AllowHardTerminate>
+                <StartWhenAvailable>true</StartWhenAvailable>
+                <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+                <AllowStartOnDemand>true</AllowStartOnDemand>
+                <Enabled>true</Enabled>
+                <Hidden>false</Hidden>
+                <WakeToRun>false</WakeToRun>
+                <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+                <Priority>7</Priority>
+              </Settings>
+              <Actions Context="Author">
+                <Exec>
+                  <Command>{XmlEscape(cliPath)}</Command>
+                  <Arguments>clean --yes</Arguments>
+                </Exec>
+              </Actions>
+            </Task>
+            """;
     }
+
+    private static string DayElement(DayOfWeek day) => day switch
+    {
+        DayOfWeek.Monday => "Monday",
+        DayOfWeek.Tuesday => "Tuesday",
+        DayOfWeek.Wednesday => "Wednesday",
+        DayOfWeek.Thursday => "Thursday",
+        DayOfWeek.Friday => "Friday",
+        DayOfWeek.Saturday => "Saturday",
+        _ => "Sunday",
+    };
+
+    private static string XmlEscape(string value) => value
+        .Replace("&", "&amp;")
+        .Replace("<", "&lt;")
+        .Replace(">", "&gt;")
+        .Replace("\"", "&quot;");
 
     public static async Task<(bool Success, string Message)> RemoveAsync(CancellationToken ct = default)
     {
@@ -124,17 +242,6 @@ public static class ScheduledCleaning
             _ => time,
         };
     }
-
-    private static string DayFlag(DayOfWeek day) => day switch
-    {
-        DayOfWeek.Monday => "MON",
-        DayOfWeek.Tuesday => "TUE",
-        DayOfWeek.Wednesday => "WED",
-        DayOfWeek.Thursday => "THU",
-        DayOfWeek.Friday => "FRI",
-        DayOfWeek.Saturday => "SAT",
-        _ => "SUN",
-    };
 
     private static string FirstLine(params string[] candidates)
     {
