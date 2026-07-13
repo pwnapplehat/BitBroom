@@ -153,7 +153,7 @@
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
 
-      <!-- ══════════ Title bar (native Fluent chrome over Mica) ══════════ -->
+      <!-- ══════════ Title bar (native Fluent chrome over the acrylic backdrop) ══════════ -->
       <ui:TitleBar Grid.Row="0" Title="BitBroom" Icon="{ui:ImageIcon 'pack://application:,,,/Assets/icon.ico'}"/>
 
       <!-- ══════════ Elevation banner ══════════ -->

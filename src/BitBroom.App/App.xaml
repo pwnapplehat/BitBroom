@@ -9,7 +9,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <!-- WPF UI (Fluent) theme + controls, then BitBroom's brand layer on top.
-             Surfaces stay stock so the Mica backdrop shows through natively;
+             Surfaces stay stock so the acrylic backdrop shows through natively;
              brand lives in the accent color, iconography and splash. -->
         <ui:ThemesDictionary Theme="Dark"/>
         <ui:ControlsDictionary/>

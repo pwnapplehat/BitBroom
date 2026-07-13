@@ -4,7 +4,7 @@
 
   <!-- ======================================================================
        BITBROOM BRAND LAYER
-       Fluent controls, spacing and materials come from WPF UI (Mica backdrop,
+       Fluent controls, spacing and materials come from WPF UI (acrylic backdrop,
        NavigationView, buttons, toggles…). This dictionary only carries the
        brand palette, typography helpers, and a few bespoke pieces.
        ====================================================================== -->
