@@ -37,6 +37,7 @@ try
         "hogs" => await CommandHogsAsync(arguments, cancellation.Token),
         "analyze" => await CommandAnalyzeAsync(arguments, cancellation.Token),
         "dupes" => await CommandDupesAsync(arguments, cancellation.Token),
+        "devjunk" => await CommandDevJunkAsync(arguments, cancellation.Token),
         "version" => CommandVersion(),
         _ => CommandHelp(arguments),
     };
@@ -83,6 +84,7 @@ static int CommandHelp(ArgumentParser arguments)
           hogs                       Report hidden space hogs (hiberfil, WSL disks, restore points…).
           analyze <path>             Directory size breakdown, largest files, file types.
           dupes <path>               Find duplicate files by content (read-only report).
+          devjunk <path>             Find regenerable dev build folders (read-only report).
           version                    Print version.
 
         CATEGORY SELECTION (scan/clean)
@@ -534,6 +536,87 @@ static async Task<int> CommandDupesAsync(ArgumentParser arguments, CancellationT
     if (result.Groups.Count > arguments.Top)
     {
         Console.WriteLine($"…and {result.Groups.Count - arguments.Top:N0} more groups (raise --top or use --json).");
+    }
+
+    return ExitCodes.Ok;
+}
+
+static async Task<int> CommandDevJunkAsync(ArgumentParser arguments, CancellationToken ct)
+{
+    string? target = arguments.Positional.FirstOrDefault();
+    if (target is null)
+    {
+        Console.Error.WriteLine("Usage: bitbroom-cli devjunk <path> [--top 25] [--json]");
+        Console.Error.WriteLine("Read-only: lists regenerable dev build folders (node_modules, target, .venv, …); deletion is GUI-only (Recycle Bin).");
+        return ExitCodes.BadArguments;
+    }
+
+    if (!Directory.Exists(target))
+    {
+        Console.Error.WriteLine($"Directory not found: {target}");
+        return ExitCodes.BadArguments;
+    }
+
+    AppSettings settings = AppSettings.Load();
+    var finder = new DevArtifactFinder(new ExclusionSet(settings.ExcludedPaths));
+
+    if (!arguments.Json)
+    {
+        Console.WriteLine($"Scanning {target} for regenerable dev folders…");
+    }
+
+    DevArtifactScanResult result = await finder.ScanAsync(
+        target,
+        arguments.Json ? null : new Progress<DevArtifactProgress>(p =>
+            Console.Write($"\r  {p.DirectoriesScanned:N0} folders scanned, {p.Found:N0} found…   ")),
+        ct);
+
+    if (!arguments.Json)
+    {
+        Console.WriteLine();
+        Console.WriteLine();
+    }
+
+    if (arguments.Json)
+    {
+        var payload = new
+        {
+            path = PathGuard.Normalize(target),
+            artifacts = result.Artifacts.Take(arguments.Top).Select(a => new
+            {
+                a.Path,
+                a.Kind,
+                a.SizeBytes,
+                a.ProjectPath,
+            }),
+            totalArtifacts = result.Artifacts.Count,
+            totalBytes = result.TotalBytes,
+            directoriesScanned = result.DirectoriesScanned,
+            skippedReparsePoints = result.SkippedReparsePoints,
+            durationMs = (long)result.Duration.TotalMilliseconds,
+        };
+        Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
+        return ExitCodes.Ok;
+    }
+
+    if (result.Artifacts.Count == 0)
+    {
+        Console.WriteLine("No regenerable dev folders found.");
+        return ExitCodes.Ok;
+    }
+
+    Console.WriteLine($"{result.Artifacts.Count:N0} regenerable dev folders — {ByteFormatter.Format(result.TotalBytes)} reclaimable");
+    Console.WriteLine($"({result.DirectoriesScanned:N0} folders scanned, {result.Duration.TotalSeconds:0.0}s)");
+    Console.WriteLine();
+
+    foreach (DevArtifact artifact in result.Artifacts.Take(arguments.Top))
+    {
+        Console.WriteLine($"{ByteFormatter.Format(artifact.SizeBytes),10}  {artifact.Kind,-24}  {artifact.Path}");
+    }
+
+    if (result.Artifacts.Count > arguments.Top)
+    {
+        Console.WriteLine($"…and {result.Artifacts.Count - arguments.Top:N0} more (raise --top or use --json).");
     }
 
     return ExitCodes.Ok;

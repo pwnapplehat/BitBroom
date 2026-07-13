@@ -173,6 +173,64 @@ public sealed class DuplicateDeleter
     }
 
     /// <summary>
+    /// Recycles developer build/dependency folders (node_modules, target, .venv, …).
+    /// Each folder passes the shared protected-location guard AND is re-verified as a
+    /// recognizable artifact (name + sibling project manifest) immediately before
+    /// recycling, so a folder whose project vanished since the scan is refused.
+    /// </summary>
+    public DuplicateDeleteResult RecycleDevArtifacts(
+        IReadOnlyList<DevArtifact> artifacts,
+        IProgress<int>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new DuplicateDeleteResult();
+        int done = 0;
+
+        foreach (DevArtifact artifact in artifacts)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string? refusal = ValidatePath(artifact.Path);
+            if (refusal is not null)
+            {
+                result.RefusedByGuard++;
+                _logger.Skipped(artifact.Path, $"guard:{refusal}");
+                continue;
+            }
+
+            if (!Directory.Exists(artifact.Path))
+            {
+                continue; // already gone
+            }
+
+            if (!DevArtifactFinder.IsArtifact(artifact.Path))
+            {
+                result.RefusedByGuard++;
+                _logger.Skipped(artifact.Path, "no-longer-a-dev-artifact");
+                continue;
+            }
+
+            int code = NativeMethods.SendToRecycleBin(artifact.Path);
+            if (code == 0 && !Directory.Exists(artifact.Path))
+            {
+                result.Recycled++;
+                result.BytesRecycled += artifact.SizeBytes;
+                _logger.Recycled(artifact.Path, artifact.SizeBytes);
+            }
+            else
+            {
+                result.Failed++;
+                result.Errors.Add($"Could not recycle (error {code}): {artifact.Path}");
+                _logger.Skipped(artifact.Path, $"recycle:{code}");
+            }
+
+            progress?.Report(++done);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// True when the directory subtree contains no files and no reparse points anywhere —
     /// i.e. deleting it recursively cannot destroy content. Unreadable entries fail closed.
     /// </summary>

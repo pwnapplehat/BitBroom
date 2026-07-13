@@ -63,6 +63,24 @@
           <ui:SymbolIcon Symbol="Flash24"/>
         </ui:Button.Icon>
       </ui:Button>
+      <ui:Button Content="Compact WSL / Docker disks" Command="{Binding CompactVirtualDisksCommand}"
+                 ToolTip="Reclaim empty space from WSL/Docker virtual disks (non-destructive; quit Docker Desktop first)">
+        <ui:Button.Icon>
+          <ui:SymbolIcon Symbol="Box24"/>
+        </ui:Button.Icon>
+      </ui:Button>
+      <ui:Button Content="Free up OneDrive space" Command="{Binding FreeUpOneDriveCommand}"
+                 ToolTip="Make OneDrive files online-only (nothing deleted; re-downloads on open)">
+        <ui:Button.Icon>
+          <ui:SymbolIcon Symbol="Cloud24"/>
+        </ui:Button.Icon>
+      </ui:Button>
+      <ui:Button Content="Remove old drivers" Command="{Binding RemoveOldDriversCommand}"
+                 ToolTip="Remove superseded driver versions; keeps the newest of each and never touches in-use drivers">
+        <ui:Button.Icon>
+          <ui:SymbolIcon Symbol="DeveloperBoard24"/>
+        </ui:Button.Icon>
+      </ui:Button>
     </WrapPanel>
 
     <ui:Card Grid.Row="2" Padding="4" Margin="0,6,0,0" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">

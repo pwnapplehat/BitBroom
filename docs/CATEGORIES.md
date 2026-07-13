@@ -133,7 +133,9 @@ Documented refusals — each with reasoning in [RESEARCH.md](RESEARCH.md):
 | Boot-time deletion of locked files | Racing the owning process for a few MB |
 | pagefile/hiberfil deletion as "cleaning" | System-managed; exposed as explicit, reversible Tools instead |
 | winapp2.ini import | Thousands of unvetted third-party delete rules (incl. registry ops) would bypass the tested guard model; every BitBroom rule is individually researched and gate-tested instead |
-| Startup manager / uninstaller / driver updater | Windows Settings & Task Manager do this natively; suite-creep is how cleaners rot |
+| Startup manager / uninstaller / driver *updater* | Windows Settings & Task Manager do this natively; suite-creep is how cleaners rot. (Removing *superseded* DriverStore copies is different — that's a disk-space problem, and Tools → "Remove old drivers" solves it via `pnputil`, keeping the newest of every family.) |
+| "Uninstall leftover" deletion | Matching orphaned AppData folders to uninstalled programs is heuristic; a false positive deletes data belonging to software you still use |
+| `C:\Windows\Installer` auto-cleaning | Microsoft states there is no supported way to prune the Installer cache — breaking it breaks repair/update/uninstall for installed apps. Stays report-only in Space Hogs |
 | Secure wipe / free-space shredding | Privacy tool, not a space tool; ineffective on SSDs and punishing on any drive |
 
 ## Adding a category (contributors)

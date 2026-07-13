@@ -3,6 +3,47 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.0] — 2026-07-13
+
+Driven by a second deep research pass across Reddit, Microsoft Q&A and the Docker/WSL
+issue trackers: the loudest unsolved complaints were WSL/Docker `.vhdx` files that never
+shrink, the DriverStore hoarding years of superseded drivers, OneDrive's buried
+"Free up space", and gigabytes of forgotten `node_modules`. All four are now actions,
+not just reports.
+
+### Added
+- **Tools → Compact WSL / Docker disks** — the fix for the single biggest hidden hog we
+  previously only *reported*. Runs the documented recipe end-to-end: best-effort `fstrim`
+  inside every distro, `wsl --shutdown`, then `diskpart` `attach vdisk readonly` +
+  `compact vdisk` per disk (the read-only attach enables the zero-block scan, same as
+  `Optimize-VHD -Mode Full` — but works on Home edition, no Hyper-V needed). Only removes
+  blocks the guest filesystem already freed; a failure always triggers a detach pass so a
+  disk is never left attached.
+- **Tools → Free up OneDrive space** — bulk "make online-only" for every detected OneDrive
+  folder (the same `attrib +U -P` pin/unpin mechanism behind Explorer's own right-click →
+  Free up space, which Windows 11 made hard to find). Deletes nothing: cloud copies stay,
+  files re-download on open.
+- **Tools → Remove old drivers** — clears the DriverStore of *superseded* driver versions
+  via `pnputil`. Keeps the newest version of every driver family, never offers unique
+  drivers or same-version duplicates (they can serve different hardware IDs), and never
+  passes `/force`/`/uninstall` — Windows itself refuses any package still in use.
+  Verified end-to-end on a real machine (superseded Intel Bluetooth package removed,
+  newest kept, re-enumeration confirmed).
+- **Duplicates → Dev junk mode** — finds regenerable developer build folders
+  (`node_modules`, `target`, `.venv`/`venv` with `pyvenv.cfg`, `dist`, `build`, `out`,
+  `.next`, `.nuxt`, `.turbo`, `.parcel-cache`, `.gradle`, `__pycache__`, …) with a
+  manifest guard: a folder only qualifies next to a real `package.json`/`Cargo.toml`/
+  `pom.xml`/etc., so a folder that merely shares the name is never listed. Recycle
+  Bin-only, artifact re-verified immediately before recycling (a folder whose project
+  vanished since the scan is refused), matched folders never recursed into.
+- **CLI: `devjunk <path>`** — the same finder as a read-only report (`--top`, `--json`).
+
+### Deliberately not added (researched and rejected)
+- Auto-cleaning `C:\Windows\Installer` orphans — Microsoft explicitly states there is no
+  supported way to prune the Installer cache; it stays report-only in Space Hogs.
+- "Uninstall leftover" deletion — matching leftover AppData folders to uninstalled
+  programs is heuristic and can hit data belonging to software you still use.
+
 ## [1.1.3] — 2026-07-13
 
 ### Changed

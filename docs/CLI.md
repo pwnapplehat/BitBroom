@@ -65,6 +65,18 @@ bitbroom-cli dupes D:\Photos --min-size 5          # ≥ 5 MB files only
 bitbroom-cli dupes C:\Users\me --json --top 100
 ```
 
+### `devjunk <path>`
+Regenerable developer build folders — `node_modules`, `target`, `.venv`, `dist`, `.next`
+and friends — sized and sorted. A folder is only reported when it sits next to the project
+manifest that proves its context (`package.json`, `Cargo.toml`, `pyvenv.cfg`, …), so a
+folder that merely *shares the name* never appears. **Read-only** — deleting is a GUI
+operation (Recycle Bin-only, artifact re-verified at delete time). Honors exclusions.
+
+```
+bitbroom-cli devjunk D:\Projects
+bitbroom-cli devjunk C:\Users\me --json --top 100
+```
+
 ### `version`
 
 ## Options
@@ -78,7 +90,7 @@ bitbroom-cli dupes C:\Users\me --json --top 100
 | `--yes` / `-y` | Consent to delete |
 | `--min-age <hours>` | Override minimum file age (0 disables) |
 | `--json` | JSON output for scripting |
-| `--top <n>` / `--depth <n>` | analyze/dupes output shaping |
+| `--top <n>` / `--depth <n>` | analyze/dupes/devjunk output shaping |
 | `--min-size <mb>` | dupes: smallest file size to consider (default 1 MB) |
 
 Invalid or unknown options (including a mistyped `--dry-run`) are rejected with exit code 3

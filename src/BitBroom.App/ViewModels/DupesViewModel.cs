@@ -83,10 +83,46 @@ public sealed class EmptyFolderViewModel : ObservableObject
     }
 }
 
+/// <summary>One regenerable developer folder (node_modules, target, .venv, …).</summary>
+public sealed class DevArtifactViewModel : ObservableObject
+{
+    private bool _isSelected;
+
+    public required DevArtifact Artifact { get; init; }
+    public required DupesViewModel Owner { get; init; }
+
+    public string Path => Artifact.Path;
+    public string Name => System.IO.Path.GetFileName(Artifact.Path) is { Length: > 0 } leaf ? leaf : Artifact.Path;
+    public string Parent => System.IO.Path.GetDirectoryName(Artifact.Path) ?? "";
+    public string Kind => Artifact.Kind;
+    public string SizeText => ByteFormatter.Format(Artifact.SizeBytes);
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (SetProperty(ref _isSelected, value))
+            {
+                Owner.OnSelectionChanged();
+            }
+        }
+    }
+}
+
+/// <summary>The three things the tab can hunt for.</summary>
+public enum DupesScanMode
+{
+    DuplicateFiles = 0,
+    EmptyFolders = 1,
+    DevJunk = 2,
+}
+
 /// <summary>
-/// The Duplicates tab: content-verified duplicate files and empty folders under a
-/// user-chosen root. Deletion is Recycle Bin-only and one copy of every duplicate
-/// group always survives (enforced in the Core deleter, mirrored in the UI).
+/// The Duplicates tab: content-verified duplicate files, empty folders, and regenerable
+/// developer build folders (node_modules, target, .venv, …) under a user-chosen root.
+/// Deletion is Recycle Bin-only and one copy of every duplicate group always survives
+/// (enforced in the Core deleter, mirrored in the UI).
 /// </summary>
 public sealed class DupesViewModel : ObservableObject
 {
@@ -95,7 +131,7 @@ public sealed class DupesViewModel : ObservableObject
     private CancellationTokenSource? _cts;
     private bool _isBusy;
     private bool _hasRun;
-    private bool _emptyFoldersMode;
+    private DupesScanMode _mode;
     private string _targetPath;
     private string _progressText = string.Empty;
     private string? _summaryText;
@@ -108,6 +144,7 @@ public sealed class DupesViewModel : ObservableObject
 
     public ObservableCollection<DupeGroupViewModel> Groups { get; } = [];
     public ObservableCollection<EmptyFolderViewModel> EmptyFolders { get; } = [];
+    public ObservableCollection<DevArtifactViewModel> DevArtifacts { get; } = [];
     public ObservableCollection<string> ScanRootChoices { get; } = [];
 
     public AsyncRelayCommand ScanCommand { get; }
@@ -117,6 +154,7 @@ public sealed class DupesViewModel : ObservableObject
     public RelayCommand KeepOldestCommand { get; }
     public RelayCommand ClearSelectionCommand { get; }
     public RelayCommand SelectAllEmptyCommand { get; }
+    public RelayCommand SelectAllDevCommand { get; }
     public RelayCommand RecycleCommand { get; }
     public RelayCommand ConfirmRecycleCommand { get; }
     public RelayCommand CancelConfirmCommand { get; }
@@ -154,6 +192,13 @@ public sealed class DupesViewModel : ObservableObject
                 folder.IsSelected = true;
             }
         }, () => EmptyFolders.Count > 0 && !_isBusy);
+        SelectAllDevCommand = new RelayCommand(() =>
+        {
+            foreach (DevArtifactViewModel artifact in DevArtifacts)
+            {
+                artifact.IsSelected = true;
+            }
+        }, () => DevArtifacts.Count > 0 && !_isBusy);
         RecycleCommand = new RelayCommand(RequestRecycle, () => !_isBusy && _selectedCount > 0);
         ConfirmRecycleCommand = new RelayCommand(() => { ConfirmVisible = false; _ = RunRecycleGuardedAsync(); });
         CancelConfirmCommand = new RelayCommand(() => ConfirmVisible = false);
@@ -163,6 +208,7 @@ public sealed class DupesViewModel : ObservableObject
             {
                 DupeFileViewModel file => file.Path,
                 EmptyFolderViewModel folder => folder.Path,
+                DevArtifactViewModel artifact => artifact.Path,
                 _ => null,
             };
             if (path is not null)
@@ -196,18 +242,21 @@ public sealed class DupesViewModel : ObservableObject
                 KeepOldestCommand.RaiseCanExecuteChanged();
                 ClearSelectionCommand.RaiseCanExecuteChanged();
                 SelectAllEmptyCommand.RaiseCanExecuteChanged();
+                SelectAllDevCommand.RaiseCanExecuteChanged();
             }
         }
     }
 
-    public bool EmptyFoldersMode
+    public DupesScanMode Mode
     {
-        get => _emptyFoldersMode;
+        get => _mode;
         set
         {
-            if (SetProperty(ref _emptyFoldersMode, value))
+            if (SetProperty(ref _mode, value))
             {
                 OnPropertyChanged(nameof(DupesMode));
+                OnPropertyChanged(nameof(EmptyFoldersMode));
+                OnPropertyChanged(nameof(DevJunkMode));
                 OnPropertyChanged(nameof(ModeHint));
                 SummaryText = null;
                 OnSelectionChanged();
@@ -217,13 +266,48 @@ public sealed class DupesViewModel : ObservableObject
 
     public bool DupesMode
     {
-        get => !_emptyFoldersMode;
-        set => EmptyFoldersMode = !value;
+        get => _mode == DupesScanMode.DuplicateFiles;
+        set
+        {
+            if (value)
+            {
+                Mode = DupesScanMode.DuplicateFiles;
+            }
+        }
     }
 
-    public string ModeHint => EmptyFoldersMode
-        ? "Folders with no files anywhere inside (nested empty folders count). Junction holders are never listed."
-        : "Files with byte-identical content (verified by full hash). One copy of every group always survives.";
+    public bool EmptyFoldersMode
+    {
+        get => _mode == DupesScanMode.EmptyFolders;
+        set
+        {
+            if (value)
+            {
+                Mode = DupesScanMode.EmptyFolders;
+            }
+        }
+    }
+
+    public bool DevJunkMode
+    {
+        get => _mode == DupesScanMode.DevJunk;
+        set
+        {
+            if (value)
+            {
+                Mode = DupesScanMode.DevJunk;
+            }
+        }
+    }
+
+    public string ModeHint => _mode switch
+    {
+        DupesScanMode.EmptyFolders =>
+            "Folders with no files anywhere inside (nested empty folders count). Junction holders are never listed.",
+        DupesScanMode.DevJunk =>
+            "Regenerable developer folders — node_modules, target, .venv, dist, .next and friends. Only flagged next to a real project manifest; the next build/install recreates them.",
+        _ => "Files with byte-identical content (verified by full hash). One copy of every group always survives.",
+    };
 
     public string TargetPath
     {
@@ -258,9 +342,12 @@ public sealed class DupesViewModel : ObservableObject
         private set => SetProperty(ref _summaryText, value);
     }
 
-    public string SelectedText => EmptyFoldersMode
-        ? $"{_selectedCount:N0} folders selected"
-        : $"{_selectedCount:N0} files · {ByteFormatter.Format(_selectedBytes)} selected";
+    public string SelectedText => _mode switch
+    {
+        DupesScanMode.EmptyFolders => $"{_selectedCount:N0} folders selected",
+        DupesScanMode.DevJunk => $"{_selectedCount:N0} folders · {ByteFormatter.Format(_selectedBytes)} selected",
+        _ => $"{_selectedCount:N0} files · {ByteFormatter.Format(_selectedBytes)} selected",
+    };
 
     public bool ConfirmVisible
     {
@@ -280,19 +367,33 @@ public sealed class DupesViewModel : ObservableObject
         private set => SetProperty(ref _resultLogPath, value);
     }
 
-    public bool NothingFound => _hasRun && !_isBusy &&
-        (EmptyFoldersMode ? EmptyFolders.Count == 0 : Groups.Count == 0);
+    public bool NothingFound => _hasRun && !_isBusy && _mode switch
+    {
+        DupesScanMode.EmptyFolders => EmptyFolders.Count == 0,
+        DupesScanMode.DevJunk => DevArtifacts.Count == 0,
+        _ => Groups.Count == 0,
+    };
 
     // -------------------------------------------------------------------------
 
     internal void OnSelectionChanged()
     {
-        _selectedCount = EmptyFoldersMode
-            ? EmptyFolders.Count(f => f.IsSelected)
-            : Groups.Sum(g => g.SelectedCount);
-        _selectedBytes = EmptyFoldersMode
-            ? 0
-            : Groups.Sum(g => g.Files.Where(f => f.IsSelected).Sum(_ => g.Group.FileSizeBytes));
+        switch (_mode)
+        {
+            case DupesScanMode.EmptyFolders:
+                _selectedCount = EmptyFolders.Count(f => f.IsSelected);
+                _selectedBytes = 0;
+                break;
+            case DupesScanMode.DevJunk:
+                _selectedCount = DevArtifacts.Count(a => a.IsSelected);
+                _selectedBytes = DevArtifacts.Where(a => a.IsSelected).Sum(a => a.Artifact.SizeBytes);
+                break;
+            default:
+                _selectedCount = Groups.Sum(g => g.SelectedCount);
+                _selectedBytes = Groups.Sum(g => g.Files.Where(f => f.IsSelected).Sum(_ => g.Group.FileSizeBytes));
+                break;
+        }
+
         OnPropertyChanged(nameof(SelectedText));
         RecycleCommand.RaiseCanExecuteChanged();
     }
@@ -328,13 +429,36 @@ public sealed class DupesViewModel : ObservableObject
         SummaryText = null;
         Groups.Clear();
         EmptyFolders.Clear();
+        DevArtifacts.Clear();
         OnSelectionChanged();
 
         try
         {
             var exclusions = new ExclusionSet(_settings.ExcludedPaths);
 
-            if (EmptyFoldersMode)
+            if (DevJunkMode)
+            {
+                _setStatus("Scanning for developer build folders…");
+                ProgressText = "Scanning…";
+                var finder = new DevArtifactFinder(exclusions);
+                var progress = new Progress<DevArtifactProgress>(p =>
+                    ProgressText = $"{p.DirectoriesScanned:N0} folders scanned — {p.Found:N0} found");
+
+                DevArtifactScanResult result = await finder.ScanAsync(TargetPath, progress, cts.Token);
+
+                foreach (DevArtifact artifact in result.Artifacts)
+                {
+                    if (DuplicateDeleter.ValidatePath(artifact.Path) is null)
+                    {
+                        DevArtifacts.Add(new DevArtifactViewModel { Artifact = artifact, Owner = this });
+                    }
+                }
+
+                SummaryText = $"{DevArtifacts.Count:N0} regenerable dev folders · {ByteFormatter.Format(result.TotalBytes)} reclaimable " +
+                              $"({result.DirectoriesScanned:N0} folders scanned · {result.Duration.TotalSeconds:0.0}s)";
+                _setStatus($"Dev junk scan complete — {ByteFormatter.Format(result.TotalBytes)} reclaimable");
+            }
+            else if (EmptyFoldersMode)
             {
                 _setStatus("Scanning for empty folders…");
                 ProgressText = "Scanning…";
@@ -437,14 +561,25 @@ public sealed class DupesViewModel : ObservableObject
             folder.IsSelected = false;
         }
 
+        foreach (DevArtifactViewModel artifact in DevArtifacts)
+        {
+            artifact.IsSelected = false;
+        }
+
         OnSelectionChanged();
     }
 
     private void RequestRecycle()
     {
-        ConfirmText = EmptyFoldersMode
-            ? $"Send {_selectedCount:N0} empty folders to the Recycle Bin?\n\nEach folder is re-verified as file-free immediately before it is recycled. You can restore everything from the bin."
-            : $"Send {_selectedCount:N0} duplicate files ({ByteFormatter.Format(_selectedBytes)}) to the Recycle Bin?\n\nOne copy of every group is kept — that's enforced by the engine, not just this dialog. Everything is restorable from the bin and recorded in the audit log.";
+        ConfirmText = _mode switch
+        {
+            DupesScanMode.EmptyFolders =>
+                $"Send {_selectedCount:N0} empty folders to the Recycle Bin?\n\nEach folder is re-verified as file-free immediately before it is recycled. You can restore everything from the bin.",
+            DupesScanMode.DevJunk =>
+                $"Send {_selectedCount:N0} dev folders ({ByteFormatter.Format(_selectedBytes)}) to the Recycle Bin?\n\nThese are regenerable build/dependency folders — the next 'npm install' / 'cargo build' recreates them. Each is re-verified as a dev artifact immediately before recycling, everything is restorable from the bin, and it all lands in the audit log.",
+            _ =>
+                $"Send {_selectedCount:N0} duplicate files ({ByteFormatter.Format(_selectedBytes)}) to the Recycle Bin?\n\nOne copy of every group is kept — that's enforced by the engine, not just this dialog. Everything is restorable from the bin and recorded in the audit log.",
+        };
         ConfirmVisible = true;
     }
 
@@ -473,7 +608,25 @@ public sealed class DupesViewModel : ObservableObject
             var deleter = new DuplicateDeleter(logger);
             DuplicateDeleteResult result;
 
-            if (EmptyFoldersMode)
+            if (DevJunkMode)
+            {
+                List<DevArtifact> selected = [.. DevArtifacts.Where(a => a.IsSelected).Select(a => a.Artifact)];
+                var progress = new Progress<int>(done => ProgressText = $"Recycled {done:N0} of {selected.Count:N0}…");
+                result = await Task.Run(() => deleter.RecycleDevArtifacts(selected, progress));
+
+                for (int i = DevArtifacts.Count - 1; i >= 0; i--)
+                {
+                    if (!Directory.Exists(DevArtifacts[i].Path))
+                    {
+                        DevArtifacts.RemoveAt(i);
+                    }
+                }
+
+                SummaryText = $"Recycled {result.Recycled:N0} dev folders · {ByteFormatter.Format(result.BytesRecycled)} reclaimable once the bin is emptied" +
+                              (result.Failed > 0 ? $" · {result.Failed} failed" : string.Empty) +
+                              (result.RefusedByGuard > 0 ? $" · {result.RefusedByGuard} refused" : string.Empty);
+            }
+            else if (EmptyFoldersMode)
             {
                 List<string> selected = [.. EmptyFolders.Where(f => f.IsSelected).Select(f => f.Path)];
                 var progress = new Progress<int>(done => ProgressText = $"Recycled {done:N0} of {selected.Count:N0}…");

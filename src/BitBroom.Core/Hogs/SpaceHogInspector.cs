@@ -270,7 +270,7 @@ public sealed class SpaceHogInspector
             "Driver store (FileRepository)",
             size,
             "Staged driver packages. GPU vendors leave 1 GB+ per driver update behind; Windows never prunes old versions.",
-            "Use the open-source Driver Store Explorer (RAPR) to delete superseded packages via Windows' own APIs, or 'pnputil /enum-drivers' + 'pnputil /delete-driver oemNN.inf'. Never delete files from the folder directly.",
+            "BitBroom can clean this: Tools → 'Remove old drivers' deletes superseded versions via pnputil, keeping the newest of every driver family (admin required). Never delete files from the folder directly.",
             HogSeverity.Notable,
             dir);
     }
@@ -446,9 +446,9 @@ public sealed class SpaceHogInspector
                 "WSL / Docker virtual disks (.vhdx)",
                 total,
                 $"Dynamically-growing virtual disks that never shrink on their own:\n{detail}",
-                "Reclaim space in three steps: 1) clean inside (docker system prune -a / delete files in the distro), " +
-                "2) run 'sudo fstrim -a' inside the distro, then 'wsl --shutdown', " +
-                "3) compact: 'Optimize-VHD -Path <disk> -Mode Full' (admin, Hyper-V) or diskpart's 'compact vdisk'. " +
+                "BitBroom can compact these: Tools → 'Compact WSL / Docker disks' runs the full recipe " +
+                "(fstrim inside each distro, wsl --shutdown, diskpart compact — admin required, quit Docker Desktop first). " +
+                "For the biggest wins clean inside first ('docker system prune -a' / delete files in the distro). " +
                 "Newer WSL also supports 'wsl --manage <distro> --set-sparse true' for automatic shrinking.",
                 total > 20L * 1024 * 1024 * 1024 ? HogSeverity.Critical : HogSeverity.Notable);
         }, cancellationToken);

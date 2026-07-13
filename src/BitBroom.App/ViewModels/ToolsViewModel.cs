@@ -20,6 +20,9 @@ public sealed class ToolsViewModel : ObservableObject
     public AsyncRelayCommand ReduceHibernationCommand { get; }
     public AsyncRelayCommand EnableHibernationCommand { get; }
     public AsyncRelayCommand ListShadowStorageCommand { get; }
+    public AsyncRelayCommand CompactVirtualDisksCommand { get; }
+    public AsyncRelayCommand FreeUpOneDriveCommand { get; }
+    public AsyncRelayCommand RemoveOldDriversCommand { get; }
 
     public ToolsViewModel(Action<string> setStatus)
     {
@@ -39,6 +42,15 @@ public sealed class ToolsViewModel : ObservableObject
             confirm: "Shrink hiberfil.sys to ~20% of RAM? Fast Startup keeps working; the full Hibernate option disappears from the power menu.");
         EnableHibernationCommand = Make("Enable hibernation", ct => SystemTools.EnableHibernationAsync(AppendLine, ct), requiresAdmin: true);
         ListShadowStorageCommand = Make("Show System Restore usage", ct => SystemTools.ListShadowStorageAsync(AppendLine, ct), requiresAdmin: true);
+        CompactVirtualDisksCommand = Make("Compact WSL / Docker disks", ct => SystemTools.CompactVirtualDisksAsync(AppendLine, ct), requiresAdmin: true,
+            confirm: "Compact your WSL/Docker virtual disks to reclaim empty space?\n\nThis only removes already-free blocks — no container, image, or file is lost. " +
+                     "WSL will be shut down first (please quit Docker Desktop beforehand). It can take a few minutes per disk.");
+        FreeUpOneDriveCommand = Make("Free up OneDrive space", ct => SystemTools.FreeUpOneDriveSpaceAsync(AppendLine, ct), requiresAdmin: false,
+            confirm: "Make your OneDrive files online-only to reclaim local space?\n\nNothing is deleted — the cloud copy stays, and each file re-downloads automatically when you next open it. " +
+                     "This is the same as right-clicking a folder and choosing 'Free up space'.");
+        RemoveOldDriversCommand = Make("Remove old drivers", ct => SystemTools.RemoveOldDriversAsync(AppendLine, ct), requiresAdmin: true,
+            confirm: "Remove superseded driver versions from the DriverStore?\n\nBitBroom keeps the NEWEST version of every driver and removes only older duplicates. " +
+                     "Windows refuses to remove any driver still in use, so active hardware is safe. This can free several GB. Creating a restore point first is recommended.");
     }
 
     public bool IsBusy
@@ -52,6 +64,7 @@ public sealed class ToolsViewModel : ObservableObject
                 {
                     FlushDnsCommand, RestartExplorerCommand, AnalyzeWinSxSCommand, CleanWinSxSCommand,
                     DisableHibernationCommand, ReduceHibernationCommand, EnableHibernationCommand, ListShadowStorageCommand,
+                    CompactVirtualDisksCommand, FreeUpOneDriveCommand, RemoveOldDriversCommand,
                 })
                 {
                     command.RaiseCanExecuteChanged();

@@ -38,7 +38,10 @@
           <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <RadioButton Content="Duplicate files" IsChecked="{Binding DupesMode}" GroupName="DupesMode"
                          Margin="0,0,14,0"/>
-            <RadioButton Content="Empty folders" IsChecked="{Binding EmptyFoldersMode}" GroupName="DupesMode"/>
+            <RadioButton Content="Empty folders" IsChecked="{Binding EmptyFoldersMode}" GroupName="DupesMode"
+                         Margin="0,0,14,0"/>
+            <RadioButton Content="Dev junk" IsChecked="{Binding DevJunkMode}" GroupName="DupesMode"
+                         ToolTip="node_modules, target, .venv, dist and other regenerable build folders"/>
           </StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <ComboBox ItemsSource="{Binding ScanRootChoices}" IsEditable="True"
@@ -160,6 +163,50 @@
             </ListBox.ItemTemplate>
           </ListBox>
 
+          <!-- Dev junk (regenerable build folders) -->
+          <ListBox ItemsSource="{Binding DevArtifacts}"
+                   Visibility="{Binding DevJunkMode, Converter={StaticResource BoolToVis}}"
+                   ScrollViewer.CanContentScroll="True"
+                   VirtualizingPanel.ScrollUnit="Pixel"
+                   VirtualizingPanel.VirtualizationMode="Recycling"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   Background="Transparent" BorderThickness="0"
+                   ItemContainerStyle="{StaticResource BareListBoxItem}"
+                   anim:Anim.SmoothScroll="True">
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="6,3,14,3">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <CheckBox Grid.Column="0" IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                  <StackPanel Grid.Column="1" Margin="8,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" Style="{StaticResource Text.Body}" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Parent}" Style="{StaticResource Text.Caption}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                  </StackPanel>
+                  <Border Grid.Column="2" Style="{StaticResource Badge}" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Kind}" FontSize="11"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                  </Border>
+                  <TextBlock Grid.Column="3" Text="{Binding SizeText}" FontSize="12.5" FontWeight="SemiBold"
+                             Foreground="{StaticResource Brush.Accent}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                  <ui:Button Grid.Column="4" Appearance="Transparent" Padding="6,4" ToolTip="Open in Explorer"
+                             Command="{Binding DataContext.Dupes.OpenInExplorerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                             CommandParameter="{Binding}">
+                    <ui:Button.Icon>
+                      <ui:SymbolIcon Symbol="FolderOpen24" FontSize="14"/>
+                    </ui:Button.Icon>
+                  </ui:Button>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
           <TextBlock Text="Nothing found — scan a folder to see results here."
                      Style="{StaticResource Text.Body}" Foreground="{StaticResource Brush.Success}"
                      HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -180,6 +227,8 @@
                      Visibility="{Binding DupesMode, Converter={StaticResource BoolToVis}}"/>
           <ui:Button Content="Select all" Appearance="Transparent" Command="{Binding SelectAllEmptyCommand}" Margin="16,0,0,0"
                      Visibility="{Binding EmptyFoldersMode, Converter={StaticResource BoolToVis}}"/>
+          <ui:Button Content="Select all" Appearance="Transparent" Command="{Binding SelectAllDevCommand}" Margin="16,0,0,0"
+                     Visibility="{Binding DevJunkMode, Converter={StaticResource BoolToVis}}"/>
           <ui:Button Content="Clear" Appearance="Transparent" Command="{Binding ClearSelectionCommand}" Margin="6,0,0,0"/>
         </StackPanel>
         <ui:Button HorizontalAlignment="Right" Appearance="Primary" MinWidth="180"
