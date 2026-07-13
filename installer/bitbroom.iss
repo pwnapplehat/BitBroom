@@ -55,4 +55,6 @@ Name: "{group}\{#AppName}"; Filename: "{app}\BitBroom.exe"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\BitBroom.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\BitBroom.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; No skipifsilent: the in-app updater installs with /SILENT and the user expects the
+; app to come back afterwards (the update flow closes it for the file swap).
+Filename: "{app}\BitBroom.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall
