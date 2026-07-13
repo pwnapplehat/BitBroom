@@ -26,13 +26,19 @@ public sealed class SettingsViewModel : ObservableObject
             _settings.Save();
             _setStatus("Lifetime counters reset");
         });
+
+        CheckUpdatesCommand = new AsyncRelayCommand(() => CheckForUpdatesNow?.Invoke() ?? Task.CompletedTask);
     }
 
     public RelayCommand OpenLogsCommand { get; }
     public RelayCommand ResetCountersCommand { get; }
+    public AsyncRelayCommand CheckUpdatesCommand { get; }
 
     /// <summary>Invoked when a setting that other tabs mirror (e.g. SimulateOnly) changes.</summary>
     public Action? OnSettingsChanged { get; init; }
+
+    /// <summary>Wired by the shell to the update checker ("Check now" button).</summary>
+    public Func<Task>? CheckForUpdatesNow { get; init; }
 
     public int MinAgeHours
     {
@@ -113,6 +119,18 @@ public sealed class SettingsViewModel : ObservableObject
             _settings.PlayStartupSound = value;
             _settings.Save();
             OnPropertyChanged();
+        }
+    }
+
+    public bool CheckForUpdatesAtStartup
+    {
+        get => _settings.CheckForUpdatesAtStartup;
+        set
+        {
+            _settings.CheckForUpdatesAtStartup = value;
+            _settings.Save();
+            OnPropertyChanged();
+            _setStatus(value ? "Update check at startup enabled" : "Update check at startup disabled — BitBroom makes no network requests at all now");
         }
     }
 }

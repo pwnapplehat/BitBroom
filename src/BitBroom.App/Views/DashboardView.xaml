@@ -103,7 +103,7 @@
           <TextBlock Text="THE BITBROOM SAFETY MODEL" Style="{StaticResource Text.Section}"/>
           <TextBlock Style="{StaticResource Text.Body}" Margin="0,8,0,0"
                      Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                     Text="• Never touches Documents, Desktop, Pictures, Downloads or any user content folder — enforced by a path guard, not by convention.&#x0a;• Never follows junctions or symlinks, and never deletes OneDrive cloud placeholders.&#x0a;• Files modified in the last 24 hours are kept (configurable), so running apps and installers are undisturbed.&#x0a;• No registry cleaning — it's risk without benefit. No telemetry, no network calls, ever.&#x0a;• Every deletion lands in a plain-text audit log you can open from the status bar."/>
+                     Text="• Never touches Documents, Desktop, Pictures, Downloads or any user content folder — enforced by a path guard, not by convention.&#x0a;• Never follows junctions or symlinks, and never deletes OneDrive cloud placeholders.&#x0a;• Files modified in the last 24 hours are kept (configurable), so running apps and installers are undisturbed.&#x0a;• No registry cleaning — it's risk without benefit. No telemetry, ever; the only network call is the optional update check (Settings).&#x0a;• Every deletion lands in a plain-text audit log you can open from the status bar."/>
         </StackPanel>
       </ui:Card>
 

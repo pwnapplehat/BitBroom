@@ -15,7 +15,10 @@ AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
-DefaultDirName={autopf}\{#AppName}
+; Per-user install under %LocalAppData%\Programs — no UAC, no elevation. This is what
+; lets the in-app updater install a new version fully silently (the VS Code model).
+DefaultDirName={localappdata}\Programs\{#AppName}
+UsePreviousAppDir=yes
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
@@ -27,9 +30,14 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Fixed per-user privileges: no "all users / just me" dialog, so /VERYSILENT never blocks.
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 UninstallDisplayIcon={app}\BitBroom.exe
+; In-app updater: silent installs wait for the running instance to exit,
+; and close/restart it automatically when possible.
+AppMutex=BitBroom.App.SingleInstance
+CloseApplications=yes
+RestartApplications=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

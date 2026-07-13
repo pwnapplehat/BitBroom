@@ -122,6 +122,8 @@ even attempts a protected path on the build machine.
 
 No registry cleaning. No prefetch purging. No `C:\Windows\Installer` or `WebCache`
 deletion. No browser cookies/history/passwords. No Office Document Cache (unsynced edits).
-No `$WinREAgent` (pending servicing). No forced deletion of locked files. No network calls.
+No `$WinREAgent` (pending servicing). No forced deletion of locked files. No network calls
+from the cleaning engine — the GUI's only network touch is the optional update check
+(Settings → Updates), never anything related to scanning or deleting.
 
 If a future contribution proposes any of these, the answer is in this file.

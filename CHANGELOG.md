@@ -18,6 +18,10 @@ All notable changes to BitBroom are documented here. Format follows
   smooth scrolling, brand accent (#38BDF8) and the Display-cut typography.
 - Splash intro is centered and plays a synthesized broom-sweep chime (whoosh + three
   "bit" sparkles matching the animation); toggleable in Settings → Appearance & sound.
+- In-app updates: optional once-per-launch GitHub release check (Settings → Updates,
+  on by default, disable for zero network requests) with a banner offering one-click
+  install — the installer is SHA-256-verified against the release's SHA256SUMS.txt
+  before it runs silently and restarts the app.
 - Removed the now-redundant hand-rolled chrome (caption buttons, nav rail, control
   templates, DWM interop).
 

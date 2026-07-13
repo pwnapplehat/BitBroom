@@ -20,7 +20,11 @@ actively defend:
 - **Supply chain:** the cleaning engine and CLI have zero third-party runtime dependencies.
   The GUI's single dependency is the MIT-licensed WPF UI library (Fluent controls,
   pinned version, source-auditable, no network code); test projects use xunit.
-  No network code exists anywhere in the product.
+- The only network code in the product is the GUI's optional update check: one HTTPS
+  request to the GitHub releases API at startup (opt-out in Settings), and — only on an
+  explicit "Install update" click — the installer download, which is verified against
+  the release's SHA256SUMS.txt before execution. The engine and CLI make no network
+  requests at all.
 
 ## Reporting a vulnerability
 

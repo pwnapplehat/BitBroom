@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using BitBroom.App.Mvvm;
+using BitBroom.App.Services;
 using BitBroom.Core.Settings;
 using BitBroom.Core.Util;
 
@@ -23,6 +24,10 @@ public sealed class MainViewModel : ObservableObject
 {
     private readonly AppSettings _settings;
     private string _statusText = "Ready";
+    private UpdateInfo? _availableUpdate;
+    private bool _updateBannerVisible;
+    private string _updateBannerText = string.Empty;
+    private bool _updateInProgress;
     public CleanViewModel Clean { get; }
     public AnalyzerViewModel Analyzer { get; }
     public HogsViewModel Hogs { get; }
@@ -34,6 +39,9 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand RestartAsAdminCommand { get; }
     public RelayCommand OpenLogsFolderCommand { get; }
     public RelayCommand NavigateToCleanCommand { get; }
+    public AsyncRelayCommand InstallUpdateCommand { get; }
+    public RelayCommand ViewUpdateCommand { get; }
+    public RelayCommand DismissUpdateCommand { get; }
 
     /// <summary>Raised when a view model wants the shell to switch tabs (index into the nav order).</summary>
     public event Action<int>? NavigateRequested;
@@ -49,7 +57,11 @@ public sealed class MainViewModel : ObservableObject
         Analyzer = new AnalyzerViewModel(SetStatus);
         Hogs = new HogsViewModel(SetStatus);
         Tools = new ToolsViewModel(SetStatus);
-        SettingsVm = new SettingsViewModel(_settings, SetStatus) { OnSettingsChanged = () => Clean.NotifySettingsChanged() };
+        SettingsVm = new SettingsViewModel(_settings, SetStatus)
+        {
+            OnSettingsChanged = () => Clean.NotifySettingsChanged(),
+            CheckForUpdatesNow = () => CheckForUpdatesAsync(manual: true),
+        };
 
         RestartAsAdminCommand = new RelayCommand(() =>
         {
@@ -68,7 +80,116 @@ public sealed class MainViewModel : ObservableObject
 
         NavigateToCleanCommand = new RelayCommand(() => NavigateRequested?.Invoke(1));
 
+        InstallUpdateCommand = new AsyncRelayCommand(InstallUpdateAsync, () => !_updateInProgress);
+        ViewUpdateCommand = new RelayCommand(() =>
+        {
+            if (_availableUpdate is { } update)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(update.ReleasePageUrl) { UseShellExecute = true });
+            }
+        });
+        DismissUpdateCommand = new RelayCommand(() => UpdateBannerVisible = false);
+
         RefreshDrives();
+
+        if (_settings.CheckForUpdatesAtStartup)
+        {
+            // Fire-and-forget: a failed or slow check must never affect startup.
+            _ = CheckForUpdatesAsync(manual: false);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Updates
+    // -------------------------------------------------------------------------
+
+    public bool UpdateBannerVisible
+    {
+        get => _updateBannerVisible;
+        private set => SetProperty(ref _updateBannerVisible, value);
+    }
+
+    public string UpdateBannerText
+    {
+        get => _updateBannerText;
+        private set => SetProperty(ref _updateBannerText, value);
+    }
+
+    /// <summary>True when the release ships a checksummed installer we can auto-install.</summary>
+    public bool UpdateCanAutoInstall => _availableUpdate is { InstallerUrl.Length: > 0, ChecksumsUrl.Length: > 0 };
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        try
+        {
+            if (manual)
+            {
+                SetStatus("Checking for updates…");
+            }
+
+            UpdateInfo? update = await UpdateService.CheckAsync().ConfigureAwait(false);
+
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (update is null)
+                {
+                    UpdateBannerVisible = false;
+                    if (manual)
+                    {
+                        SetStatus($"You're up to date (v{UpdateService.CurrentVersion.ToString(3)} is the latest release).");
+                    }
+
+                    return;
+                }
+
+                _availableUpdate = update;
+                UpdateBannerText = $"BitBroom {update.TagName} is available (you have v{UpdateService.CurrentVersion.ToString(3)}).";
+                OnPropertyChanged(nameof(UpdateCanAutoInstall));
+                UpdateBannerVisible = true;
+                if (manual)
+                {
+                    SetStatus($"Update available: {update.TagName}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            // Offline, rate-limited, GitHub down — all fine. Only a manual check reports it.
+            if (manual)
+            {
+                SetStatus($"Update check failed: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (_availableUpdate is not { } update || !UpdateCanAutoInstall)
+        {
+            return;
+        }
+
+        _updateInProgress = true;
+        InstallUpdateCommand.RaiseCanExecuteChanged();
+
+        try
+        {
+            var progress = new Progress<double>(fraction =>
+                UpdateBannerText = $"Downloading {update.TagName}… {fraction:P0}");
+
+            string installer = await UpdateService.DownloadVerifiedInstallerAsync(update, progress);
+
+            UpdateBannerText = "Verified. Installing — BitBroom will restart…";
+            UpdateService.LaunchInstaller(installer);
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            _updateInProgress = false;
+            InstallUpdateCommand.RaiseCanExecuteChanged();
+            UpdateBannerText = $"Update failed: {ex.Message} — you can install it manually from the release page.";
+            SetStatus("Update failed — nothing was changed.");
+        }
     }
 
     public bool IsElevated => ElevationInfo.IsElevated;

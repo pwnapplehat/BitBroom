@@ -27,6 +27,12 @@ public sealed class AppSettings
     /// <summary>Play the short broom-sweep sound with the startup splash animation.</summary>
     public bool PlayStartupSound { get; set; } = true;
 
+    /// <summary>
+    /// Query the GitHub releases API once at startup for a newer version. This is the
+    /// only network request BitBroom can make, and it can be turned off here.
+    /// </summary>
+    public bool CheckForUpdatesAtStartup { get; set; } = true;
+
     /// <summary>Per-category enabled/disabled overrides chosen by the user (persisted between runs).</summary>
     public Dictionary<string, bool> CategorySelections { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

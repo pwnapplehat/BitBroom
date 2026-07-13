@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:views="clr-namespace:BitBroom.App.Views"
+        xmlns:anim="clr-namespace:BitBroom.App.Animations"
         Title="BitBroom"
         Width="1280" Height="820" MinWidth="1080" MinHeight="680"
         WindowStartupLocation="CenterScreen"
@@ -168,17 +169,34 @@
         </ui:TitleBar.Header>
       </ui:TitleBar>
 
-      <!-- ══════════ Elevation banner ══════════ -->
-      <Grid Grid.Row="1" Margin="12,0,12,6"
-            Visibility="{Binding IsElevated, Converter={StaticResource BoolToVisInverted}}">
-        <ui:InfoBar Severity="Warning"
-                    IsClosable="False"
-                    IsOpen="True"
-                    Title="Running without administrator rights"
-                    Message="System categories (Windows Temp, Update cache, logs…) are locked."/>
-        <ui:Button Content="Restart as administrator" Command="{Binding RestartAsAdminCommand}"
-                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"/>
-      </Grid>
+      <!-- ══════════ Elevation + update banners ══════════ -->
+      <StackPanel Grid.Row="1">
+        <Grid Margin="12,0,12,6"
+              Visibility="{Binding IsElevated, Converter={StaticResource BoolToVisInverted}}">
+          <ui:InfoBar Severity="Warning"
+                      IsClosable="False"
+                      IsOpen="True"
+                      Title="Running without administrator rights"
+                      Message="System categories (Windows Temp, Update cache, logs…) are locked."/>
+          <ui:Button Content="Restart as administrator" Command="{Binding RestartAsAdminCommand}"
+                     HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        </Grid>
+
+        <Grid Margin="12,0,12,6" anim:Anim.Transition="SlideFade"
+              Visibility="{Binding UpdateBannerVisible, Converter={StaticResource BoolToVis}}">
+          <ui:InfoBar Severity="Informational"
+                      IsClosable="False"
+                      IsOpen="True"
+                      Title="Update available"
+                      Message="{Binding UpdateBannerText}"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0">
+            <ui:Button Content="What's new" Appearance="Transparent" Command="{Binding ViewUpdateCommand}" Margin="0,0,8,0"/>
+            <ui:Button Content="Install update" Appearance="Primary" Command="{Binding InstallUpdateCommand}" Margin="0,0,8,0"
+                       Visibility="{Binding UpdateCanAutoInstall, Converter={StaticResource BoolToVis}}"/>
+            <ui:Button Content="Later" Appearance="Transparent" Command="{Binding DismissUpdateCommand}"/>
+          </StackPanel>
+        </Grid>
+      </StackPanel>
 
       <!-- ══════════ Navigation + pages ══════════ -->
       <ui:NavigationView x:Name="RootNavigation" Grid.Row="2"

@@ -75,6 +75,32 @@
         </Grid>
       </ui:Card>
 
+      <TextBlock Text="UPDATES" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
+      <ui:Card>
+        <StackPanel>
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Check for updates at startup" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="Asks the GitHub releases API once per launch whether a newer version exists. Nothing else is sent — no identifiers, no telemetry. Updates install only when you click Install."/>
+            </StackPanel>
+            <ui:ToggleSwitch HorizontalAlignment="Right" VerticalAlignment="Center" IsChecked="{Binding CheckForUpdatesAtStartup}"/>
+          </Grid>
+
+          <Separator Background="{DynamicResource ControlStrokeColorDefaultBrush}" Margin="0,14"/>
+
+          <Grid>
+            <StackPanel MaxWidth="560" HorizontalAlignment="Left">
+              <TextBlock Text="Check now" Style="{StaticResource Text.Body}" FontWeight="Medium"/>
+              <TextBlock Style="{StaticResource Text.Caption}" Margin="0,3,0,0"
+                         Text="One-off manual check. The result lands in the status bar; if an update exists, a banner appears at the top."/>
+            </StackPanel>
+            <ui:Button Content="Check for updates" HorizontalAlignment="Right" VerticalAlignment="Center"
+                       Command="{Binding CheckUpdatesCommand}"/>
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
       <TextBlock Text="LOGS &amp; DATA" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
       <ui:Card>
         <StackPanel>
@@ -105,7 +131,7 @@
       <TextBlock Text="PRIVACY" Style="{StaticResource Text.Section}" Margin="0,22,0,10"/>
       <ui:Card>
         <TextBlock Style="{StaticResource Text.Body}" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                   Text="BitBroom makes zero network requests. No telemetry, no update pings, no crash reporting to anyone — crash logs stay on your disk. What happens on your machine stays on your machine."/>
+                   Text="No telemetry, no crash reporting, no accounts — crash logs stay on your disk. The only network request BitBroom can make is the optional GitHub version check above (plus the installer download if you click Install); disable the toggle and it makes zero network requests. What happens on your machine stays on your machine."/>
       </ui:Card>
     </StackPanel>
   </ScrollViewer>

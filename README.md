@@ -68,7 +68,10 @@ Read [docs/SAFETY.md](docs/SAFETY.md) for the full design. The short version:
    **simulation mode** that only writes the log and deletes nothing.
 7. **No registry cleaner. Ever.** The consensus from Windows internals experts (Mark Russinovich):
    negligible benefit, real risk. Same for prefetch purging — a [myth that makes boots slower](docs/RESEARCH.md#myths-we-refuse-to-implement).
-8. **Zero network calls.** No telemetry, no update pings, no accounts. The code cannot phone home.
+8. **No telemetry, ever.** No tracking, no accounts, no crash reporting. The GUI's only
+   network touch is an optional once-per-launch GitHub version check (off = zero network
+   requests); updates download only when you click Install and are SHA-256-verified
+   against the release manifest before running. The engine and CLI have no network code.
    The cleaning engine has zero third-party dependencies; the GUI's only dependency is the
    MIT-licensed, source-auditable WPF UI library (Fluent controls — no network code).
 
