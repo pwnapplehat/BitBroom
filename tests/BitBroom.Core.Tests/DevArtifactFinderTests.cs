@@ -112,6 +112,97 @@ public class DevArtifactFinderTests
         Assert.True(Directory.Exists(artifact.Path));
     }
 
+    // -------------------------------------------------------------------------
+    // Runtime-app refusal (regression: BitBroom recycled Cursor's out/ + node_modules
+    // because installed Electron apps look exactly like dev projects)
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Electron_app_layout_is_never_flagged()
+    {
+        using var sandbox = new TestSandbox();
+        // Replica of the real incident: %LOCALAPPDATA%\Programs\cursor — an Electron app
+        // whose resources\app is package.json + out + node_modules. icudtl.dat at the app
+        // root is the Electron runtime marker.
+        sandbox.CreateFile(@"apps\cursor\icudtl.dat", 10);
+        sandbox.CreateFile(@"apps\cursor\cursor.exe", 10);
+        sandbox.CreateFile(@"apps\cursor\resources\app\package.json", 10);
+        sandbox.CreateFile(@"apps\cursor\resources\app\out\main.js", 5000);
+        sandbox.CreateFile(@"apps\cursor\resources\app\node_modules\dep\index.js", 5000);
+        // A genuine project elsewhere in the same scan proves the scan still works.
+        sandbox.CreateFile(@"myproject\package.json", 10);
+        sandbox.CreateFile(@"myproject\node_modules\lib.js", 2000);
+
+        var finder = new DevArtifactFinder();
+        DevArtifactScanResult result = await finder.ScanAsync(sandbox.Root);
+
+        DevArtifact only = Assert.Single(result.Artifacts);
+        Assert.Contains("myproject", only.Path);
+        Assert.DoesNotContain(result.Artifacts, a => a.Path.Contains("cursor"));
+    }
+
+    [Fact]
+    public async Task Squirrel_and_asar_marked_trees_are_never_flagged()
+    {
+        using var sandbox = new TestSandbox();
+        // Squirrel.Windows layout (Discord/Slack style): Update.exe above the app.
+        sandbox.CreateFile(@"slack\Update.exe", 10);
+        sandbox.CreateFile(@"slack\app-4.1\web\package.json", 10);
+        sandbox.CreateFile(@"slack\app-4.1\web\dist\bundle.js", 3000);
+        // Packed Electron: an .asar next to the unpacked project.
+        sandbox.CreateFile(@"packed\app.asar", 10);
+        sandbox.CreateFile(@"packed\app\package.json", 10);
+        sandbox.CreateFile(@"packed\app\node_modules\x.js", 3000);
+
+        var finder = new DevArtifactFinder();
+        DevArtifactScanResult result = await finder.ScanAsync(sandbox.Root);
+
+        Assert.Empty(result.Artifacts);
+    }
+
+    [Fact]
+    public async Task Delete_time_reverify_refuses_runtime_app_locations()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateFile(@"proj\package.json", 10);
+        sandbox.CreateFile(@"proj\node_modules\a.js", 1000);
+
+        var finder = new DevArtifactFinder();
+        DevArtifact artifact = Assert.Single((await finder.ScanAsync(sandbox.Root)).Artifacts);
+
+        // The app marker appears AFTER the scan (e.g. the folder is actually an app the
+        // scan raced with) — IsArtifact must now refuse it, so the deleter skips it.
+        sandbox.CreateFile(@"proj\icudtl.dat", 10);
+        Assert.False(DevArtifactFinder.IsArtifact(artifact.Path));
+
+        using var logger = new RunLogger(Path.Combine(sandbox.Root, "logs"), "test");
+        var deleter = new DuplicateDeleter(logger);
+        DuplicateDeleteResult result = deleter.RecycleDevArtifacts([artifact]);
+
+        Assert.Equal(0, result.Recycled);
+        Assert.Equal(1, result.RefusedByGuard);
+        Assert.True(Directory.Exists(artifact.Path));
+    }
+
+    [Fact]
+    public void Runtime_location_checks_cover_appdata_and_profile_dot_folders()
+    {
+        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        // The exact real-world victims from the incident report.
+        Assert.True(DevArtifactFinder.IsRuntimeAppLocation(
+            Path.Combine(localAppData, "Programs", "cursor", "resources", "app", "out")));
+        Assert.True(DevArtifactFinder.IsRuntimeAppLocation(
+            Path.Combine(localAppData, "hermes", "hermes-agent", "node_modules")));
+        Assert.True(DevArtifactFinder.IsRuntimeAppLocation(
+            Path.Combine(profile, ".cursor", "extensions", "some.ext-1.0.0", "dist")));
+
+        // Ordinary project locations stay allowed.
+        Assert.False(DevArtifactFinder.IsRuntimeAppLocation(
+            Path.Combine(profile, "Desktop", "Work", "myapp", "node_modules")));
+    }
+
     [SkippableRecycleFact]
     public async Task Deleter_recycles_a_dev_artifact_end_to_end()
     {

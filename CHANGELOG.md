@@ -3,6 +3,27 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.2] — 2026-07-13
+
+### Fixed (important — Dev junk safety)
+- **Dev junk mode no longer flags installed applications.** Modern desktop apps ship the
+  exact same layout as a dev project — an Electron app (Cursor, Discord, Slack, VS Code…)
+  is literally `package.json` + `out`/`dist` + `node_modules`, and deployed Python tools
+  carry `.venv`/`__pycache__`. The finder previously matched those and could send an app's
+  own runtime code to the Recycle Bin, breaking it (reported: recycling Cursor's
+  `resources\app\out` produced `ERR_MODULE_NOT_FOUND` on next launch). Nothing was lost —
+  Recycle Bin mode meant a full restore fixed it — but the finder should never have offered
+  them.
+- The finder now **refuses runtime-app locations** at both scan time and delete time:
+  anything under `AppData` (except `%TEMP%`), `Program Files`, `ProgramData`, `Windows`;
+  dot-folders directly under your profile (`.cursor`, `.vscode`, `.nuget`…); and any tree
+  carrying app-runtime markers (Electron's `icudtl.dat`/`v8_context_snapshot.bin`, a
+  Squirrel `Update.exe`, or an `*.asar`), scanning outward through parent folders. Verified
+  on the real profile from the report: the previously-flagged Cursor/hermes/.cursor paths
+  now produce zero hits, while genuine projects under `Desktop\Work` are still found.
+- Added regression tests replicating the Electron, Squirrel, and packed-`.asar` layouts,
+  plus a delete-time re-verification test.
+
 ## [1.2.1] — 2026-07-13
 
 ### Changed
