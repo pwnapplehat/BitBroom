@@ -281,12 +281,20 @@ public sealed class CleanViewModel : ObservableObject
             .Sum(c => c.SizeBytes);
     }
 
-    private async Task ScanAsync()
+    private Task ScanAsync() => ScanAsync(clearResult: true);
+
+    /// <param name="clearResult">False for the automatic rescan after a clean, so the
+    /// "Freed …" result strip (and its audit-log button) stays visible.</param>
+    private async Task ScanAsync(bool clearResult)
     {
         var cts = new CancellationTokenSource();
         _cts = cts;
         IsBusy = true;
-        ResultSummary = null;
+        if (clearResult)
+        {
+            ResultSummary = null;
+        }
+
         _setStatus("Scanning…");
 
         try
@@ -464,11 +472,11 @@ public sealed class CleanViewModel : ObservableObject
             ProgressText = string.Empty;
             _setStatus(ResultSummary);
 
-            // Refresh sizes and drive stats after a real clean.
+            // Refresh sizes and drive stats after a real clean (keep the result strip visible).
             if (!_settings.SimulateOnly)
             {
                 OnCleanCompleted?.Invoke();
-                await ScanAsync();
+                await ScanAsync(clearResult: false);
             }
         }
         catch (OperationCanceledException)
