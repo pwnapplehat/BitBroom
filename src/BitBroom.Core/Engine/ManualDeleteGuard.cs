@@ -5,16 +5,25 @@ namespace BitBroom.Core.Engine;
 /// tabs (as opposed to rule-based cleaning, which the stricter <see cref="PathGuard"/>
 /// covers). It refuses the places a careless click must never reach — drive roots, the
 /// Windows/Program Files/ProgramData trees, the Users root and the user's own profile
-/// root, plus the system-managed files at the drive root (pagefile, hiberfil, the bin,
-/// System Volume Information). User content deeper inside the profile or on data drives
-/// stays deletable (it is confirmed and goes to the Recycle Bin), so the tools remain
-/// useful without being dangerous.
+/// root, plus system items at the drive root (detected dynamically by the Hidden+System
+/// attributes, with a curated name list as a fallback). User content deeper inside the
+/// profile or on data drives stays deletable (it is confirmed and goes to the Recycle
+/// Bin), so the tools remain useful without being dangerous.
+///
+/// The protected roots are resolved from the environment (<see cref="Environment.GetFolderPath"/>),
+/// so they adapt to any Windows install drive, localized folder names or relocated profile
+/// — nothing here assumes "C:\Windows". Only the drive-root fallback names are literal, and
+/// those (pagefile.sys, $Recycle.Bin, …) are OS-invariant.
 /// </summary>
 public static class ManualDeleteGuard
 {
     private static readonly string[] ProtectedRoots = BuildProtectedRoots();
 
-    /// <summary>Folder/file names that are off-limits when they sit directly at a drive root.</summary>
+    /// <summary>
+    /// Fallback names off-limits at a drive root, used only when the Hidden+System
+    /// attribute probe can't read the item (missing/locked). These names are invariant
+    /// across Windows installs and locales.
+    /// </summary>
     private static readonly string[] ProtectedDriveRootNames =
     [
         "$Recycle.Bin", "$RECYCLE.BIN", "System Volume Information", "Recovery",
@@ -97,10 +106,20 @@ public static class ManualDeleteGuard
             }
         }
 
-        // A protected name sitting directly at a drive root (e.g. C:\pagefile.sys, C:\$Recycle.Bin).
+        // Items sitting directly at a drive root (e.g. C:\pagefile.sys, C:\$Recycle.Bin).
+        // Two layers, dynamic first: anything Windows marks Hidden+System at the root is
+        // off-limits (pagefile, hiberfil, swapfile, $Recycle.Bin, System Volume Information,
+        // Recovery, Config.Msi… — no name list needed, catches future ones too). The curated
+        // name list is a fallback for when the attributes can't be read or the item doesn't
+        // exist yet (e.g. unit tests, or a path typed by hand).
         string? parent = Path.GetDirectoryName(normalized);
         if (parent is not null && PathGuard.IsDriveRoot(parent))
         {
+            if (IsHiddenSystem(normalized))
+            {
+                return "it is a hidden system item at the drive root";
+            }
+
             string leaf = Path.GetFileName(normalized);
             foreach (string name in ProtectedDriveRootNames)
             {
@@ -112,6 +131,22 @@ public static class ManualDeleteGuard
         }
 
         return null;
+    }
+
+    /// <summary>True when the item exists and carries both Hidden and System attributes.</summary>
+    private static bool IsHiddenSystem(string path)
+    {
+        try
+        {
+            FileAttributes attrs = File.GetAttributes(path);
+            const FileAttributes mask = FileAttributes.Hidden | FileAttributes.System;
+            return (attrs & mask) == mask;
+        }
+        catch (Exception)
+        {
+            // Doesn't exist / unreadable — let the name-list fallback decide.
+            return false;
+        }
     }
 
     public static bool CanDelete(string path) => Validate(path) is null;

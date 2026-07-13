@@ -26,7 +26,7 @@
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
           <ui:Button Content="Scan" Appearance="Primary" Command="{Binding ScanCommand}" MinWidth="110">
             <ui:Button.Icon>
-              <ui:SymbolIcon Symbol="CopySelect24"/>
+              <ui:SymbolIcon Symbol="DocumentMultiple24"/>
             </ui:Button.Icon>
           </ui:Button>
         </StackPanel>

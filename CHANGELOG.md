@@ -3,6 +3,20 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.1.2] — 2026-07-13
+
+### Fixed
+- The **Duplicates** navigation item and Scan button had no icon: the chosen glyph
+  (`CopySelect24`) is a valid enum value but has no glyph in the bundled Fluent font, so it
+  rendered blank. Switched to `DocumentMultiple24`, which renders.
+
+### Changed
+- `ManualDeleteGuard` now detects drive-root system items **dynamically** by their
+  Hidden+System attributes (catching pagefile, hiberfil, `$Recycle.Bin`, System Volume
+  Information, Recovery, etc. without relying on the name list), keeping the curated names
+  only as a fallback for unreadable/missing items. Protected trees were already resolved
+  dynamically from the environment.
+
 ## [1.1.1] — 2026-07-13
 
 ### Fixed

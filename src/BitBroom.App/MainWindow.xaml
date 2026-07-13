@@ -218,7 +218,7 @@
           </ui:NavigationViewItem>
           <ui:NavigationViewItem Content="Duplicates" TargetPageType="{x:Type views:DupesView}">
             <ui:NavigationViewItem.Icon>
-              <ui:SymbolIcon Symbol="CopySelect24"/>
+              <ui:SymbolIcon Symbol="DocumentMultiple24"/>
             </ui:NavigationViewItem.Icon>
           </ui:NavigationViewItem>
           <ui:NavigationViewItem Content="Analyzer" TargetPageType="{x:Type views:AnalyzerView}">
