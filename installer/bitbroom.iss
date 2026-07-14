@@ -5,7 +5,8 @@
 #define AppName "BitBroom"
 #define AppVersion "1.2.3"
 #define AppPublisher "BitBroom Contributors"
-#define AppURL "https://github.com/pwnapplehat/BitBroom"
+#define AppURL "https://bitbroom.app"
+#define RepoURL "https://github.com/pwnapplehat/BitBroom"
 #define DistDir "..\dist\win-x64"
 
 [Setup]
@@ -14,7 +15,7 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
-AppSupportURL={#AppURL}/issues
+AppSupportURL={#RepoURL}/issues
 ; Per-user install under %LocalAppData%\Programs — no UAC, no elevation. This is what
 ; lets the in-app updater install a new version fully silently (the VS Code model).
 DefaultDirName={localappdata}\Programs\{#AppName}

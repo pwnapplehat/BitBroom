@@ -37,6 +37,13 @@
           <TextBlock Style="{StaticResource Text.Caption}" Margin="0,6,0,0"
                      Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                      Text="Open source and community-driven — contributions welcome on GitHub."/>
+          <TextBlock Margin="0,8,0,0" FontSize="13">
+            <Hyperlink NavigateUri="https://bitbroom.app" RequestNavigate="OnLinkNavigate"
+                       Foreground="{StaticResource Brush.Accent}">bitbroom.app</Hyperlink>
+            <Run Text="  ·  " Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+            <Hyperlink NavigateUri="https://github.com/pwnapplehat/BitBroom" RequestNavigate="OnLinkNavigate"
+                       Foreground="{StaticResource Brush.Accent}">github.com/pwnapplehat/BitBroom</Hyperlink>
+          </TextBlock>
         </StackPanel>
       </ui:Card>
 
