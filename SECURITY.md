@@ -29,5 +29,6 @@ actively defend:
 ## Reporting a vulnerability
 
 Please report privately via GitHub Security Advisories ("Report a vulnerability" on the
-repository) rather than public issues. Expect an acknowledgement within 72 hours. Please
-include a proof-of-concept path layout if the issue involves the deletion engine.
+repository) or by email to **contact@bitbroom.app**, rather than public issues. Expect an
+acknowledgement within 72 hours. Please include a proof-of-concept path layout if the
+issue involves the deletion engine.
