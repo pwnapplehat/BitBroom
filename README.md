@@ -149,6 +149,15 @@ tests/                safety-critical test suite (junction canary & friends)
 docs/                 RESEARCH, SAFETY, CATEGORIES, CLI, BUILDING
 ```
 
+## "Windows protected your PC"?
+
+On first launch Windows may show a blue **SmartScreen** prompt ("Windows protected your
+PC"). That's expected for a new app that hasn't yet built download reputation with
+Microsoft — it is **not** a malware detection. Click **More info → Run anyway**. BitBroom is
+open source (read every line here) and each release ships a `SHA256SUMS.txt` so you can
+verify your download is byte-for-byte the published build. The warning fades on its own as
+more people install a given release.
+
 ## Requirements
 
 - Windows 10 x64 (1809+) or Windows 11 (x64 / ARM64 builds available)
