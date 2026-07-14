@@ -130,6 +130,14 @@ Documented with sources in [docs/CATEGORIES.md](docs/CATEGORIES.md#deliberately-
 - ❌ Startup managers / uninstallers / driver updaters (Windows Settings does this natively;
   suite-creep is how cleaners become the problem)
 
+## The BitBroom family
+
+- 🧹 **BitBroom** (this repo) — cleans the junk you don't need.
+- 🟠 **[BitBroom Rescue](https://github.com/pwnapplehat/BitBroom.Rescue)** — brings back
+  the files you do: safety-first data recovery (NTFS/FAT32/exFAT undelete, Recycle Bin,
+  shadow copies, signature carving, clone-first imaging for failing drives). The source
+  drive is opened read-only, always.
+
 ## Project layout
 
 ```
