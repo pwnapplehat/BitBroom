@@ -3,6 +3,13 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.4] — 2026-07-14
+
+### Added
+- BitBroom now has a home: **[bitbroom.app](https://bitbroom.app)**. The About tab links
+  to the website and the GitHub repository, the installer's publisher URL points at the
+  site, and security reports are accepted at contact@bitbroom.app.
+
 ## [1.2.3] — 2026-07-13
 
 ### Fixed (safety — hardening the whole class, not just Dev junk)
