@@ -8,13 +8,13 @@
 
 Reclaim gigabytes of hidden junk — without the fear, the ads, the upsells, or the registry-cleaner snake oil.
 
-**[bitbroom.app](https://bitbroom.app)**
+**[bitbroom.app/cleaner](https://bitbroom.app/cleaner/)**
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2ea44f)](.github/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![.NET 10](https://img.shields.io/badge/.NET-10_LTS-512BD4)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6)](#requirements)
-[![Website](https://img.shields.io/badge/Website-bitbroom.app-38BDF8)](https://bitbroom.app)
+[![Website](https://img.shields.io/badge/Website-bitbroom.app%2Fcleaner-38BDF8)](https://bitbroom.app/cleaner/)
 
 <img src="assets/screenshots/clean.png" width="800" alt="BitBroom Clean tab"/>
 
