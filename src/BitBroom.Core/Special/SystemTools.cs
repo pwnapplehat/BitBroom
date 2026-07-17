@@ -90,6 +90,79 @@ public static class SystemTools
         return disks;
     }
 
+    /// <summary>
+    /// True when the vhdx belongs to Docker Desktop (lives under a "Docker" directory).
+    /// Docker Desktop holds its disks open for as long as it runs — it re-attaches them
+    /// moments after a WSL shutdown — so diskpart can never compact them while it's up.
+    /// </summary>
+    public static bool IsDockerDiskPath(string path)
+    {
+        foreach (string segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        {
+            if (segment.Equals("Docker", StringComparison.OrdinalIgnoreCase) ||
+                segment.StartsWith("DockerDesktop", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Detects a running Docker Desktop (the app or its backend service processes).</summary>
+    public static bool IsDockerDesktopRunning()
+    {
+        foreach (string name in new[] { "Docker Desktop", "com.docker.backend", "com.docker.service", "com.docker.build" })
+        {
+            System.Diagnostics.Process[] found = System.Diagnostics.Process.GetProcessesByName(name);
+            foreach (System.Diagnostics.Process p in found)
+            {
+                p.Dispose();
+            }
+
+            if (found.Length > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// diskpart repaints its progress line in place; captured as a pipe, that becomes the
+    /// same "NN percent completed" line dozens of times. This wrapper forwards a progress
+    /// line only when the percentage actually changed (other lines pass through untouched).
+    /// </summary>
+    public static Action<string>? FilterDiskpartProgress(Action<string>? onLine)
+    {
+        if (onLine is null)
+        {
+            return null;
+        }
+
+        string? lastProgress = null;
+        return line =>
+        {
+            string trimmed = line.Trim();
+            if (trimmed.EndsWith("percent completed", StringComparison.OrdinalIgnoreCase))
+            {
+                if (trimmed == lastProgress)
+                {
+                    return; // same percentage repainted — drop it
+                }
+
+                lastProgress = trimmed;
+            }
+            else if (trimmed.Length > 0)
+            {
+                lastProgress = null;
+            }
+
+            onLine(line);
+        };
+    }
+
     /// <summary>WSL distro names from the registry (avoids wsl.exe's UTF-16 output entirely).</summary>
     public static List<string> ListWslDistros()
     {
@@ -140,6 +213,16 @@ public static class SystemTools
 
         onLine?.Invoke($"Found {disks.Count} virtual disk(s).");
 
+        // Docker Desktop re-attaches its disks seconds after a WSL shutdown — and with WSL
+        // integration enabled it restarts integrated distros (e.g. Ubuntu) just as fast —
+        // so diskpart loses the "file in use" race on those disks. Detect it up front,
+        // skip what's locked honestly, and tell the user exactly how to include them.
+        bool dockerRunning = IsDockerDesktopRunning();
+        if (dockerRunning)
+        {
+            onLine?.Invoke("Docker Desktop is running — it keeps its own disks (and any WSL-integrated distro) locked; locked disks will be skipped this run.");
+        }
+
         foreach (string distro in ListWslDistros())
         {
             ct.ThrowIfCancellationRequested();
@@ -167,26 +250,78 @@ public static class SystemTools
         await Task.Delay(5000, ct).ConfigureAwait(false); // WSL takes a moment to release the vhdx locks
 
         long totalBefore = 0, totalAfter = 0;
-        int failures = 0;
+        int compacted = 0, skipped = 0, failures = 0;
 
         foreach (string disk in disks)
         {
             ct.ThrowIfCancellationRequested();
 
+            if (dockerRunning && IsDockerDiskPath(disk))
+            {
+                skipped++;
+                onLine?.Invoke($"\nSkipping {disk} — locked by Docker Desktop.");
+                continue;
+            }
+
             long before = SafeFileSize(disk);
             totalBefore += before;
 
             (bool ok, long after) = await CompactSingleVhdxAsync(disk, onLine, ct).ConfigureAwait(false);
+
             if (!ok)
             {
+                // Most common cause: something re-attached the disk after our shutdown —
+                // Docker Desktop's watchdog restarts WSL within seconds (locking even
+                // non-Docker distros), or a background wsl.exe session respawned. One
+                // fresh shutdown immediately before a retry usually wins the race.
+                onLine?.Invoke("  Disk was locked — shutting WSL down again for one retry…");
+                await ProcessRunner.RunAsync("wsl.exe", "--shutdown", TimeSpan.FromMinutes(1), null, ct).ConfigureAwait(false);
+                await Task.Delay(3000, ct).ConfigureAwait(false);
+                (ok, after) = await CompactSingleVhdxAsync(disk, onLine, ct).ConfigureAwait(false);
+            }
+
+            if (ok)
+            {
+                compacted++;
+            }
+            else if (dockerRunning)
+            {
+                // Not a failure: Docker Desktop's watchdog re-locks WSL faster than we can
+                // compact. The user gets exact instructions; the run itself did all it could.
+                skipped++;
+                onLine?.Invoke("  Still locked — Docker Desktop restarts WSL as soon as it shuts down. Skipped.");
+            }
+            else
+            {
                 failures++;
+                onLine?.Invoke("  Still locked. Some other process is holding this disk — a reboot releases it.");
             }
 
             totalAfter += after;
         }
 
         long reclaimed = Math.Max(0, totalBefore - totalAfter);
-        onLine?.Invoke($"\nDone. Reclaimed about {ByteFormatter.Format(reclaimed)} across {disks.Count} disk(s).");
+        string summary = $"\nDone. Compacted {compacted} disk(s), reclaimed about {ByteFormatter.Format(reclaimed)}.";
+        if (skipped > 0)
+        {
+            summary += $" Skipped {skipped} locked disk(s).";
+        }
+
+        if (failures > 0)
+        {
+            summary += $" {failures} disk(s) failed.";
+        }
+
+        onLine?.Invoke(summary);
+        if (skipped > 0)
+        {
+            onLine?.Invoke(
+                "To compact the skipped disks: quit Docker Desktop (tray whale icon → Quit Docker Desktop), " +
+                "then run this tool again. Tip: 'docker system prune' frees space inside Docker's disk; " +
+                "compaction shrinks the disk file itself.");
+        }
+
+        // Intentional skips are not failures — the run did everything that was possible.
         return new ProcessResult(failures == 0 ? 0 : 2, string.Empty, string.Empty);
     }
 
@@ -213,7 +348,10 @@ public static class SystemTools
                 $"select vdisk file=\"{diskPath}\"\r\nattach vdisk readonly\r\ncompact vdisk\r\ndetach vdisk\r\nexit\r\n", ct)
                 .ConfigureAwait(false);
 
-            ProcessResult r = await ProcessRunner.RunAsync("diskpart.exe", $"/s \"{script}\"", TimeSpan.FromMinutes(20), onLine, ct)
+            // diskpart repaints its progress line; deduplicate so the console shows each
+            // percentage once instead of dozens of identical "NN percent completed" lines.
+            ProcessResult r = await ProcessRunner.RunAsync(
+                "diskpart.exe", $"/s \"{script}\"", TimeSpan.FromMinutes(20), FilterDiskpartProgress(onLine), ct)
                 .ConfigureAwait(false);
             success = r.Success;
 

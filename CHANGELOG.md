@@ -3,6 +3,29 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## [1.2.5] — 2026-07-17
+
+### Fixed (Tools → Compact WSL / Docker disks)
+- **Docker Desktop's disks no longer produce raw diskpart errors.** Docker Desktop keeps
+  its vhdx files attached while it runs — it re-attaches them (and restarts any
+  WSL-integrated distro) seconds after `wsl --shutdown`, so diskpart always lost the
+  "file in use" race. The tool now detects a running Docker Desktop up front, skips the
+  disks it keeps locked with a clear explanation (quit Docker Desktop from the tray whale
+  icon, then run again; `docker system prune` frees space *inside* the disk, compaction
+  shrinks the file), and exits cleanly — intentional skips are no longer reported as
+  failures (previously exit code 2).
+- **A locked non-Docker disk gets one automatic retry** after a fresh `wsl --shutdown` —
+  background `wsl.exe` sessions can respawn between the shutdown and the compact, and one
+  retry usually wins that race. If it's still locked, the message says exactly who holds
+  it and what to do.
+- **diskpart's progress spam is gone.** diskpart repaints its progress line in place;
+  captured as a pipe that became dozens of identical " 19 percent completed" lines
+  flooding the console. Each percentage now prints once.
+- Verified end-to-end elevated on real hardware with Docker Desktop running: WSL distro
+  trimmed and compacted, both Docker disks skipped with guidance, exit code 0; plus
+  regression tests for the Docker-path classifier and the progress deduplicator
+  (144 tests pass).
+
 ## [1.2.4] — 2026-07-14
 
 ### Added

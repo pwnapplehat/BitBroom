@@ -3,7 +3,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.2.4</Version>
+    <Version>1.2.5</Version>
     <Product>BitBroom</Product>
     <Authors>BitBroom Contributors</Authors>
     <Company>BitBroom Contributors</Company>

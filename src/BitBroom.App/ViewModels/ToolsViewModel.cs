@@ -58,7 +58,8 @@ public sealed class ToolsViewModel : ObservableObject
         ListShadowStorageCommand = Make("Show System Restore usage", ct => SystemTools.ListShadowStorageAsync(AppendLine, ct), requiresAdmin: true);
         CompactVirtualDisksCommand = Make("Compact WSL / Docker disks", ct => SystemTools.CompactVirtualDisksAsync(AppendLine, ct), requiresAdmin: true,
             confirm: "Compact your WSL/Docker virtual disks to reclaim empty space?\n\nThis only removes already-free blocks — no container, image, or file is lost. " +
-                     "WSL will be shut down first (please quit Docker Desktop beforehand). It can take a few minutes per disk.");
+                     "WSL will be shut down first. If Docker Desktop is running, its disks are locked and will be skipped — quit Docker Desktop first to compact those too. " +
+                     "It can take a few minutes per disk.");
         FreeUpOneDriveCommand = Make("Free up OneDrive space", ct => SystemTools.FreeUpOneDriveSpaceAsync(AppendLine, ct), requiresAdmin: false,
             confirm: "Make your OneDrive files online-only to reclaim local space?\n\nNothing is deleted — the cloud copy stays, and each file re-downloads automatically when you next open it. " +
                      "This is the same as right-clicking a folder and choosing 'Free up space'.");
@@ -71,7 +72,7 @@ public sealed class ToolsViewModel : ObservableObject
             new ToolGroup("Storage & disks",
             [
                 new ToolInfo("Compact WSL / Docker disks",
-                    "WSL and Docker .vhdx virtual disks grow but never shrink on their own. Trims each distro, shuts WSL down, then compacts every disk — your files, images and containers are untouched. Quit Docker Desktop first.",
+                    "WSL and Docker .vhdx virtual disks grow but never shrink on their own. Trims each distro, shuts WSL down, then compacts every disk — your files, images and containers are untouched. While Docker Desktop is running its disks are locked, so quit it first to include them.",
                     "Box24", true, CompactVirtualDisksCommand),
                 new ToolInfo("Free up OneDrive space",
                     "Makes synced OneDrive files online-only so they stop using local disk. Nothing is deleted — the cloud copy stays and files re-download when you open them.",

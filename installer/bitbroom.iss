@@ -3,7 +3,7 @@
 ; Expects published binaries in dist\win-x64 (run build\publish.ps1 first).
 
 #define AppName "BitBroom"
-#define AppVersion "1.2.4"
+#define AppVersion "1.2.5"
 #define AppPublisher "BitBroom Contributors"
 #define AppURL "https://bitbroom.app"
 #define RepoURL "https://github.com/pwnapplehat/BitBroom"
