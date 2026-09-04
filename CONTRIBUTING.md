@@ -12,9 +12,12 @@ Thanks for helping make Windows cleaning boring and safe.
    [docs/CATEGORIES.md](docs/CATEGORIES.md).
 3. **The refusal list is load-bearing.** Registry cleaning, prefetch purging and friends
    (see CATEGORIES.md → "Deliberately excluded") will not be accepted, with any UI.
-4. **Tests must stay green**: `dotnet test tests\BitBroom.Core.Tests`. If you add engine
-   behaviour, add a test. If you add a category, `CatalogSanityTests` already gates it —
-   make sure it passes on a real machine, not just in theory.
+4. **Tests must stay green.** On Windows: `dotnet test tests\BitBroom.Core.Tests`. On
+   Linux: push and wait for the `windows-latest` CI job (this repo cannot compile on Ubuntu).
+   If you add engine behaviour, add a test. If you add a category, `CatalogSanityTests`
+   already gates it.
+
+See [docs/LINUX.md](docs/LINUX.md) for the Ubuntu → GitHub Actions loop.
 
 ## Adding a cleaning category (checklist)
 

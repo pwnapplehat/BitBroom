@@ -3,7 +3,11 @@
 ; Expects published binaries in dist\win-x64 (run build\publish.ps1 first).
 
 #define AppName "BitBroom"
+; CI passes /DAppVersion=<Directory.Build.props Version>. The default is the last
+; shipped version so a local `iscc installer\bitbroom.iss` still builds.
+#ifndef AppVersion
 #define AppVersion "1.2.5"
+#endif
 #define AppPublisher "BitBroom Contributors"
 #define AppURL "https://bitbroom.app"
 #define RepoURL "https://github.com/pwnapplehat/BitBroom"

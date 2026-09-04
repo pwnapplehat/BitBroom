@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-- Windows 10/11
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (LTS)
+- **To compile locally:** Windows 10/11 and the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (LTS). WPF cannot build on Linux.
+- **From Ubuntu:** you do not need those. Push to GitHub; Actions `windows-latest` compiles, tests, and on a `v*` tag publishes the GitHub Release. See [LINUX.md](LINUX.md).
 
 ## Build & test
 
@@ -47,28 +47,26 @@ iscc installer\bitbroom.iss     # → installer\Output\BitBroom-<version>-setup.
 
 ## CI
 
-`.github/workflows/ci.yml` builds, runs the full test suite, and publishes self-contained
-x64 + ARM64 binaries as downloadable build artifacts on every push, PR, and `v*` tag.
+`.github/workflows/ci.yml` runs on `windows-latest` for every push, PR, and `v*` tag:
+restore, build, the full test suite, publish x64 + ARM64, pack portable zips + the Inno
+setup.exe + `SHA256SUMS.txt`, and upload those as Actions artifacts.
+
+On a version tag whose name matches `<Version>` in `Directory.Build.props` (`v1.2.5`
+when Version is `1.2.5`; a mismatch fails the job), it also creates the GitHub Release
+the in-app updater consumes. No local Windows machine is required for that path.
 
 ## Cutting a release
 
-Releases are produced from locally built and smoke-tested artifacts so every published
-binary is verified on a real machine first:
+Preferred path is from Linux or anywhere with `git`: bump Version + CHANGELOG, push,
+wait for green CI, tag. Details: [LINUX.md](LINUX.md).
+
+If you *are* on Windows and want to pack locally (optional):
 
 ```powershell
-# 1. Build both architectures
 ./build/publish.ps1 -Runtime win-x64
 ./build/publish.ps1 -Runtime win-arm64
-
-# 2. Zip the portable builds and build the installer
-Compress-Archive dist/win-x64/*   release/BitBroom-<ver>-portable-win-x64.zip
-Compress-Archive dist/win-arm64/* release/BitBroom-<ver>-portable-win-arm64.zip
-iscc installer/bitbroom.iss        # -> installer/Output/BitBroom-<ver>-setup.exe
-
-# 3. Tag and publish (attach the zips, the installer, and SHA256SUMS.txt)
-git tag -a v<ver> -m "BitBroom v<ver>"
-git push origin v<ver>
-gh release create v<ver> release/* --title "BitBroom v<ver>" --notes-file <notes>
+./build/install-innosetup.ps1    # once, pinned + checksum-verified
+./build/pack-release.ps1         # → release\ zips + setup.exe + SHA256SUMS.txt
 ```
 
 ## Engine integration testing (sandboxed)

@@ -91,7 +91,8 @@ cleaned folder pointing at a canary file — the suite fails if the canary is ev
 
 **Installer:** `BitBroom-<version>-setup.exe` from Releases.
 
-**Build from source:** see [docs/BUILDING.md](docs/BUILDING.md).
+**Build from source:** see [docs/BUILDING.md](docs/BUILDING.md). From Linux, see
+[docs/LINUX.md](docs/LINUX.md) — GitHub Actions is the Windows compiler.
 
 > BitBroom runs fine without administrator rights (per-user categories). System categories
 > (Windows Temp, Update cache, logs, dumps) unlock via the in-app **Restart as administrator**
@@ -146,7 +147,7 @@ src/BitBroom.Core/    engine: PathGuard, walker, SafeDeleter, rules, catalog, an
 src/BitBroom.App/     WPF GUI — Windows 11 Fluent via WPF UI (MIT), acrylic backdrop
 src/BitBroom.Cli/     bitbroom-cli
 tests/                safety-critical test suite (junction canary & friends)
-docs/                 RESEARCH, SAFETY, CATEGORIES, CLI, BUILDING
+docs/                 RESEARCH, SAFETY, CATEGORIES, CLI, BUILDING, LINUX
 ```
 
 ## "Windows protected your PC"?

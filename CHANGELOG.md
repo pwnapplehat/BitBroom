@@ -3,6 +3,15 @@
 All notable changes to BitBroom are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versioning follows SemVer.
 
+## Unreleased
+
+### Changed (release pipeline)
+- **GitHub Actions cuts the GitHub Release.** A `v*` tag whose name matches
+  `Directory.Build.props` Version publishes the portable zips, `BitBroom-<ver>-setup.exe`,
+  and `SHA256SUMS.txt` — the same assets the in-app updater already expects. Developing
+  and shipping from Linux no longer requires a local Windows pack step. See
+  [docs/LINUX.md](docs/LINUX.md).
+
 ## [1.2.5] — 2026-07-17
 
 ### Fixed (Tools → Compact WSL / Docker disks)

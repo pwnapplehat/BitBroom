@@ -7,12 +7,15 @@ on:
   pull_request:
     branches: [main]
 
-# Releases are cut manually from locally built + smoke-tested artifacts
-# (see docs/BUILDING.md → "Cutting a release"). CI validates every push/PR/tag
-# and publishes the binaries as downloadable build artifacts.
+# Least-privilege by default; the release step opts into contents:write.
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: windows-latest
+    permissions:
+      contents: write # attach GitHub Release assets when building a version tag
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +41,14 @@ jobs:
         run: ./build/publish.ps1 -Runtime win-arm64
         shell: pwsh
 
+      - name: Install Inno Setup (pinned + verified)
+        run: ./build/install-innosetup.ps1
+        shell: pwsh
+
+      - name: Pack release assets
+        run: ./build/pack-release.ps1
+        shell: pwsh
+
       - name: Upload artifacts (x64)
         uses: actions/upload-artifact@v4
         with:
@@ -49,3 +60,19 @@ jobs:
         with:
           name: BitBroom-win-arm64
           path: dist/win-arm64/
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: BitBroom-release
+          path: release/
+
+      # Tag v1.2.6 (matching Directory.Build.props Version) → GitHub Release with
+      # portable zips, setup.exe, and SHA256SUMS.txt. No local Windows machine required.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
