@@ -30,6 +30,8 @@ bitbroom-cli clean --dry-run            # simulation: full audit log, zero delet
 bitbroom-cli clean --yes                # real clean of the default set
 bitbroom-cli clean --categories windows-old --yes    # Advanced ids must be named explicitly
 bitbroom-cli clean --min-age 168 --yes  # only files older than 7 days
+bitbroom-cli clean --until-free 20G --yes            # stop once 20 GB is free on the system drive
+bitbroom-cli clean --until-free 5GB --drive D --yes  # same, on D:
 ```
 
 Rules:
@@ -38,6 +40,11 @@ Rules:
   individually via `--categories`;
 - files in use are skipped and counted; every deletion lands in the audit log
   (`%LocalAppData%\BitBroom\logs`).
+- `--until-free` stops as soon as the target drive has that much free space. Other
+  volumes are left alone. All-or-nothing categories (Windows.old, Recycle Bin, event
+  logs, Delivery Optimization) run only when their whole size fits in the remaining
+  deficit. Recycle Bin *mode* (Settings) is refused because the bin does not free space.
+  `--dry-run --until-free` still previews the subset that would be deleted.
 
 ### `hogs`
 Report-only inspection of hidden space consumers (hibernation file, page files, WSL/Docker
@@ -89,6 +96,8 @@ bitbroom-cli devjunk C:\Users\me --json --top 100
 | `--dry-run` | Simulation mode (also honoured from GUI settings) |
 | `--yes` / `-y` | Consent to delete |
 | `--min-age <hours>` | Override minimum file age (0 disables) |
+| `--until-free <size>` / `--target-free` | Stop once this much is free (`20G`, `1.5GB`, `512MB`) |
+| `--drive <letter>` | Volume for `--until-free` (default: Windows system drive) |
 | `--json` | JSON output for scripting |
 | `--top <n>` / `--depth <n>` | analyze/dupes/devjunk output shaping |
 | `--min-size <mb>` | dupes: smallest file size to consider (default 1 MB) |
@@ -122,4 +131,7 @@ Parse results in PowerShell:
 ```powershell
 $r = & bitbroom-cli clean --dry-run --json | ConvertFrom-Json
 "{0:N1} GB would be freed" -f ($r.bytesFreed / 1GB)
+
+$r = & bitbroom-cli clean --until-free 20G --yes --json | ConvertFrom-Json
+$r.untilFree.reached   # true once the drive has ≥ 20 GB free
 ```

@@ -97,11 +97,18 @@ public sealed class WindowsOldCategory : CleanCategory
             return result;
         }
 
+        if (context.SkipAtomicCategory(Id, scan.TotalBytes, dir))
+        {
+            result.Duration = stopwatch.Elapsed;
+            return result;
+        }
+
         if (context.Simulate)
         {
             context.Logger.Deleted(dir, scan.TotalBytes, simulated: true);
             result.Deleted = 1;
             result.BytesFreed = scan.TotalBytes;
+            context.NoteGoalFreed(scan.TotalBytes);
             result.Duration = stopwatch.Elapsed;
             return result;
         }
@@ -146,12 +153,14 @@ public sealed class WindowsOldCategory : CleanCategory
             long remaining = MeasureRemaining(dir);
             result.BytesFreed = Math.Max(0, scan.TotalBytes - remaining);
             result.Locked = 1;
+            context.NoteGoalFreed(result.BytesFreed);
         }
         else
         {
             result.Deleted = 1;
             result.BytesFreed = scan.TotalBytes;
             context.Logger.Deleted(dir, scan.TotalBytes, simulated: false);
+            context.NoteGoalFreed(result.BytesFreed);
         }
 
         progress?.Report(new CleanProgress(Id, Name, 3, 3, result.BytesFreed));

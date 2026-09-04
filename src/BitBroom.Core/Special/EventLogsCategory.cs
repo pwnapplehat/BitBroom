@@ -78,11 +78,18 @@ public sealed class EventLogsCategory : CleanCategory
         var result = new CategoryCleanResult { CategoryId = Id, Simulated = context.Simulate };
         var stopwatch = Stopwatch.StartNew();
 
+        if (context.SkipAtomicCategory(Id, scan.TotalBytes, LogsDirectory))
+        {
+            result.Duration = stopwatch.Elapsed;
+            return result;
+        }
+
         if (context.Simulate)
         {
             context.Logger.Deleted($"Event logs ({scan.Items.Count} channels)", scan.TotalBytes, simulated: true);
             result.Deleted = scan.Items.Count;
             result.BytesFreed = scan.TotalBytes;
+            context.NoteGoalFreed(scan.TotalBytes);
             result.Duration = stopwatch.Elapsed;
             return result;
         }
@@ -134,6 +141,7 @@ public sealed class EventLogsCategory : CleanCategory
             result.BytesFreed = 0;
         }
 
+        context.NoteGoalFreed(result.BytesFreed);
         context.Logger.Info($"Cleared {result.Deleted} event log channels ({result.Locked} refused), freed {result.BytesFreed} bytes.");
         result.Duration = stopwatch.Elapsed;
         return result;

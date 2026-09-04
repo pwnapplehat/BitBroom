@@ -276,4 +276,101 @@ public class WalkerAndDeleterTests
         Assert.True(Directory.Exists(root), "Rule root must be preserved");
         Assert.False(Directory.Exists(Path.Combine(root, "deep")), "Emptied subdirectory should be removed");
     }
+
+    [Fact]
+    public async Task Until_free_deletes_largest_first_and_leaves_the_rest()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateDirectory("apphome", "cache");
+        sandbox.CreateFile(@"apphome\cache\small.bin", 100, DateTime.UtcNow.AddDays(-3));
+        sandbox.CreateFile(@"apphome\cache\medium.bin", 200, DateTime.UtcNow.AddDays(-3));
+        sandbox.CreateFile(@"apphome\cache\large.bin", 300, DateTime.UtcNow.AddDays(-3));
+
+        CleanCategory category = CacheCategory(sandbox, "until-free-cache");
+        var engine = new CleaningEngine();
+        var settings = new BitBroom.Core.Settings.AppSettings { MinAgeHours = 24 };
+        Dictionary<string, CategoryScanResult> scans = await engine.ScanAsync([category], settings);
+        Assert.Equal(600, scans[category.Id].TotalBytes);
+
+        string drive = Path.GetPathRoot(sandbox.Root)!;
+        // 250 more bytes wanted: the 300-byte file is enough.
+        var goal = new FreeSpaceGoal(drive, targetFreeBytes: 1_000 + 250, initialAvailableBytes: 1_000);
+
+        using RunLogger logger = NullLogger();
+        Dictionary<string, CategoryCleanResult> cleans = await engine.CleanAsync(
+            [category], scans, settings, logger, freeSpaceGoal: goal);
+
+        Assert.Equal(300, cleans[category.Id].BytesFreed);
+        Assert.Equal(1, cleans[category.Id].Deleted);
+        Assert.True(goal.IsSatisfied);
+        Assert.False(File.Exists(Path.Combine(sandbox.Root, "apphome", "cache", "large.bin")));
+        Assert.True(File.Exists(Path.Combine(sandbox.Root, "apphome", "cache", "medium.bin")));
+        Assert.True(File.Exists(Path.Combine(sandbox.Root, "apphome", "cache", "small.bin")));
+    }
+
+    [Fact]
+    public async Task Until_free_skips_later_categories_once_the_target_is_met()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateFile(@"a\cache\one.bin", 100, DateTime.UtcNow.AddDays(-3));
+        sandbox.CreateFile(@"b\cache\big.bin", 400, DateTime.UtcNow.AddDays(-3));
+
+        CleanCategory small = CacheCategory(sandbox, "small-first", folder: "a");
+        CleanCategory large = CacheCategory(sandbox, "large-second", folder: "b");
+        var engine = new CleaningEngine();
+        var settings = new BitBroom.Core.Settings.AppSettings { MinAgeHours = 24 };
+        Dictionary<string, CategoryScanResult> scans = await engine.ScanAsync([small, large], settings);
+
+        string drive = Path.GetPathRoot(sandbox.Root)!;
+        var goal = new FreeSpaceGoal(drive, targetFreeBytes: 1_000 + 350, initialAvailableBytes: 1_000);
+
+        using RunLogger logger = NullLogger();
+        Dictionary<string, CategoryCleanResult> cleans = await engine.CleanAsync(
+            [small, large], scans, settings, logger, freeSpaceGoal: goal);
+
+        Assert.Equal(400, cleans[large.Id].BytesFreed);
+        Assert.Equal(0, cleans[small.Id].Deleted);
+        Assert.True(File.Exists(Path.Combine(sandbox.Root, "a", "cache", "one.bin")));
+        Assert.False(File.Exists(Path.Combine(sandbox.Root, "b", "cache", "big.bin")));
+    }
+
+    [Fact]
+    public async Task Until_free_already_met_deletes_nothing()
+    {
+        using var sandbox = new TestSandbox();
+        sandbox.CreateFile(@"apphome\cache\junk.bin", 100, DateTime.UtcNow.AddDays(-3));
+        CleanCategory category = CacheCategory(sandbox, "already-free");
+        var engine = new CleaningEngine();
+        var settings = new BitBroom.Core.Settings.AppSettings { MinAgeHours = 24 };
+        Dictionary<string, CategoryScanResult> scans = await engine.ScanAsync([category], settings);
+
+        string drive = Path.GetPathRoot(sandbox.Root)!;
+        var goal = new FreeSpaceGoal(drive, targetFreeBytes: 500, initialAvailableBytes: 1_000);
+
+        using RunLogger logger = NullLogger();
+        Dictionary<string, CategoryCleanResult> cleans = await engine.CleanAsync(
+            [category], scans, settings, logger, freeSpaceGoal: goal);
+
+        Assert.Equal(0, cleans[category.Id].Deleted);
+        Assert.True(File.Exists(Path.Combine(sandbox.Root, "apphome", "cache", "junk.bin")));
+    }
+
+    private static CleanCategory CacheCategory(TestSandbox sandbox, string id, string folder = "apphome")
+        => new()
+        {
+            Id = id,
+            Name = id,
+            Description = "sandbox",
+            Group = CategoryGroup.Applications,
+            Rules =
+            [
+                new CleanRule
+                {
+                    Base = KnownBase.Custom,
+                    CustomBaseProvider = () => Path.Combine(sandbox.Root, folder),
+                    RelativePattern = "cache",
+                    MinAgeHoursOverride = 0,
+                }.Validate(),
+            ],
+        };
 }

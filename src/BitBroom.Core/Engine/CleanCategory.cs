@@ -23,6 +23,12 @@ public sealed class CleanContext
 
     /// <summary>Send deleted files to the Recycle Bin instead of removing them permanently.</summary>
     public bool UseRecycleBin { get; init; }
+
+    /// <summary>
+    /// When set, cleaning stops once this drive has the requested free space. Files on
+    /// other volumes are skipped. Null in the GUI (it always runs the full selection).
+    /// </summary>
+    public FreeSpaceGoal? Goal { get; init; }
 }
 
 /// <summary>
@@ -135,9 +141,26 @@ public class CleanCategory
         var directoriesByRoot = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
         int done = 0;
-        foreach (ScanItem item in scan.Items)
+        IEnumerable<ScanItem> items = context.Goal is null
+            ? scan.Items
+            : scan.Items.OrderByDescending(i => i.SizeBytes);
+
+        foreach (ScanItem item in items)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (context.Goal is { } goal)
+            {
+                if (goal.IsSatisfied)
+                {
+                    break;
+                }
+
+                if (goal.ShouldSkipItem(item))
+                {
+                    continue;
+                }
+            }
 
             DeleteOutcome outcome = deleter.DeleteFile(item);
             switch (outcome)
@@ -146,6 +169,7 @@ public class CleanCategory
                 case DeleteOutcome.Simulated:
                     result.Deleted++;
                     result.BytesFreed += item.SizeBytes;
+                    context.NoteGoalFreed(item.SizeBytes);
                     break;
                 case DeleteOutcome.Locked:
                     result.Locked++;
@@ -182,7 +206,7 @@ public class CleanCategory
             }
 
             done++;
-            if (done % 128 == 0 || done == scan.Items.Count)
+            if (done % 128 == 0 || done == scan.Items.Count || context.Goal?.IsSatisfied == true)
             {
                 progress?.Report(new CleanProgress(Id, Name, done, scan.Items.Count, result.BytesFreed));
             }

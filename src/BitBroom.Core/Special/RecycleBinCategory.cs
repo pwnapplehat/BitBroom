@@ -77,11 +77,18 @@ public sealed class RecycleBinCategory : CleanCategory
                 return result;
             }
 
+            if (context.SkipAtomicCategory(Id, scan.TotalBytes, representativePath: null))
+            {
+                result.Duration = stopwatch.Elapsed;
+                return result;
+            }
+
             if (context.Simulate)
             {
                 context.Logger.Deleted("Recycle Bin (all drives)", scan.TotalBytes, simulated: true);
                 result.Deleted = scan.FileCount;
                 result.BytesFreed = scan.TotalBytes;
+                context.NoteGoalFreed(scan.TotalBytes);
                 result.Duration = stopwatch.Elapsed;
                 return result;
             }
@@ -96,6 +103,7 @@ public sealed class RecycleBinCategory : CleanCategory
                 context.Logger.Deleted("Recycle Bin (all drives)", scan.TotalBytes, simulated: false);
                 result.Deleted = scan.FileCount;
                 result.BytesFreed = scan.TotalBytes;
+                context.NoteGoalFreed(scan.TotalBytes);
             }
             else
             {

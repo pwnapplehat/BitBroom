@@ -43,7 +43,7 @@ treats your data like it's radioactive, and that tells you the truth.**
 | **Disk Analyzer** | "Where did my space go?" — parallel folder-size treeview, the 100 largest files, a by-file-type breakdown, CSV export, and open-in-Explorer / recycle actions. |
 | **Space Hogs** | Report-only detector for the big hidden consumers: `hiberfil.sys`, page files, WSL/Docker `.vhdx` disks, System Restore usage, the Windows Search index, the WinSxS component store, DriverStore, Windows Installer cache, oversized Outlook OSTs, the Downloads folder, the `CapabilityAccessManager.db-wal` Windows bug — each with the safe, supported fix explained. |
 | **Tools** | One-click supported maintenance: DISM component-store cleanup & analysis, **WSL/Docker virtual-disk compaction** (reclaims the empty space `.vhdx` files never give back — non-destructive, works on every Windows edition), **OneDrive "free up space"** (bulk online-only, nothing deleted), **old-driver removal** (keeps the newest of every driver family; Windows itself refuses in-use packages), hibernation off/reduced/on, DNS flush, Explorer restart, System Restore usage. Official Windows mechanisms only (`diskpart`, `attrib`, `pnputil`, DISM, powercfg), output streamed live. |
-| **CLI** | `bitbroom-cli` — scan/clean/hogs/analyze/dupes/devjunk with `--dry-run`, `--json`, exit codes for scripting. |
+| **CLI** | `bitbroom-cli` — scan/clean/hogs/analyze/dupes/devjunk with `--dry-run`, `--until-free`, `--json`, exit codes for scripting. |
 | **Automation** | Scheduled cleaning of the safe default set via Windows Task Scheduler (Settings → Scheduled cleaning — free, no Pro tier). Per-folder **exclusions** are enforced engine-deep, and an optional **Recycle Bin mode** gives every clean an undo window. |
 | **Native look** | Windows 11 Fluent design end-to-end: acrylic wallpaper-blur backdrop (taskbar-style), native NavigationView, Fluent controls and title bar via the MIT-licensed [WPF UI](https://github.com/lepoco/wpfui) library — plus a branded startup animation, page transitions, staggered reveals, shimmer progress and inertial smooth scrolling. |
 
@@ -106,6 +106,7 @@ bitbroom-cli scan                                    # measure the safe default 
 bitbroom-cli clean --dry-run                         # full preview: logs everything, deletes nothing
 bitbroom-cli clean --yes                             # clean the default set
 bitbroom-cli clean --categories user-temp,nvidia-caches --yes
+bitbroom-cli clean --until-free 20G --yes            # stop once 20 GB is free
 bitbroom-cli hogs                                    # hidden space-consumer report
 bitbroom-cli analyze D:\ --depth 3 --top 50          # folder size breakdown + file types
 bitbroom-cli dupes D:\Photos --min-size 5            # content-verified duplicate report

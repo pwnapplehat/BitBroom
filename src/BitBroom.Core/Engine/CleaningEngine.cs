@@ -74,6 +74,7 @@ public sealed class CleaningEngine
         RunLogger logger,
         IProgress<CleanProgress>? progress = null,
         Dictionary<KnownBase, string?>? baseOverrides = null,
+        FreeSpaceGoal? freeSpaceGoal = null,
         CancellationToken cancellationToken = default)
     {
         var resolver = CreateResolver(baseOverrides);
@@ -84,15 +85,32 @@ public sealed class CleaningEngine
             Simulate = settings.SimulateOnly,
             Exclusions = new ExclusionSet(settings.ExcludedPaths),
             UseRecycleBin = settings.CleanToRecycleBin,
+            Goal = freeSpaceGoal,
         };
 
         var results = new Dictionary<string, CategoryCleanResult>(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<CleanCategory> ordered = freeSpaceGoal is null
+            ? categories
+            : OrderForFreeSpaceGoal(categories, scans, freeSpaceGoal);
 
-        foreach (CleanCategory category in categories)
+        bool loggedGoalStop = false;
+        foreach (CleanCategory category in ordered)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!scans.TryGetValue(category.Id, out CategoryScanResult? scan))
             {
+                continue;
+            }
+
+            if (freeSpaceGoal is { IsSatisfied: true })
+            {
+                if (!loggedGoalStop)
+                {
+                    logger.Info($"Stopping: {freeSpaceGoal.DriveRoot} has reached the requested free space ({freeSpaceGoal.TargetFreeBytes} bytes).");
+                    loggedGoalStop = true;
+                }
+
+                results[category.Id] = new CategoryCleanResult { CategoryId = category.Id, Simulated = context.Simulate };
                 continue;
             }
 
@@ -118,5 +136,46 @@ public sealed class CleaningEngine
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Biggest reclaimable pile on the target drive first, so --until-free reaches the
+    /// requested free space with fewer (and typically larger) deletions.
+    /// </summary>
+    private static List<CleanCategory> OrderForFreeSpaceGoal(
+        IReadOnlyList<CleanCategory> categories,
+        IReadOnlyDictionary<string, CategoryScanResult> scans,
+        FreeSpaceGoal goal)
+    {
+        return [.. categories.OrderByDescending(c => ScoreOnDrive(scans, c.Id, goal))];
+    }
+
+    private static long ScoreOnDrive(
+        IReadOnlyDictionary<string, CategoryScanResult> scans,
+        string categoryId,
+        FreeSpaceGoal goal)
+    {
+        if (!scans.TryGetValue(categoryId, out CategoryScanResult? scan))
+        {
+            return 0;
+        }
+
+        long onDrive = 0;
+        bool anyVirtual = false;
+        foreach (ScanItem item in scan.Items)
+        {
+            if ((item.Flags & ScanItemFlags.Virtual) != 0)
+            {
+                anyVirtual = true;
+                continue;
+            }
+
+            if (goal.IsOnDrive(item.Path))
+            {
+                onDrive += item.SizeBytes;
+            }
+        }
+
+        return anyVirtual ? Math.Max(onDrive, scan.TotalBytes) : onDrive;
     }
 }

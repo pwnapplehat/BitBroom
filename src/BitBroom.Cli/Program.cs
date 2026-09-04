@@ -19,6 +19,12 @@ if (arguments.Error is not null)
     return ExitCodes.BadArguments;
 }
 
+if (arguments.UntilFreeBytes is not null && arguments.Command is not "clean")
+{
+    Console.Error.WriteLine("Option '--until-free' is only valid with the 'clean' command.");
+    return ExitCodes.BadArguments;
+}
+
 using var cancellation = new CancellationTokenSource();
 Console.CancelKeyPress += (_, e) =>
 {
@@ -81,6 +87,7 @@ static int CommandHelp(ArgumentParser arguments)
           list                       List all cleaning categories.
           scan                       Measure reclaimable space (read-only, always safe).
           clean                      Delete what scan found. Requires --yes (or use --dry-run).
+                                     --until-free 20G stops once that much is free on the drive.
           hogs                       Report hidden space hogs (hiberfil, WSL disks, restore points…).
           analyze <path>             Directory size breakdown, largest files, file types.
           dupes <path>               Find duplicate files by content (read-only report).
@@ -96,6 +103,8 @@ static int CommandHelp(ArgumentParser arguments)
           --dry-run                  Clean in simulation mode: log everything, delete nothing.
           --yes, -y                  Confirm deletion (required for a real clean).
           --min-age <hours>          Override the minimum file age (default from settings, 24h).
+          --until-free <size>        Stop cleaning once this much is free (20G, 1.5GB, 512MB).
+          --drive <letter>           Drive for --until-free (default: the Windows system drive).
           --json                     Machine-readable JSON output.
           --top <n>                  analyze/dupes: number of entries to print (default 25).
           --depth <n>                analyze: tree depth to print (default 2).
@@ -241,11 +250,42 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
 
     WarnAboutAdminCategories(selected);
 
+    FreeSpaceGoal? goal = null;
+    if (arguments.UntilFreeBytes is long targetBytes)
+    {
+        if (settings.CleanToRecycleBin && !settings.SimulateOnly)
+        {
+            Console.Error.WriteLine("--until-free cannot run in Recycle Bin mode: the bin does not free disk space. Turn it off in Settings, or pass --dry-run.");
+            return ExitCodes.BadArguments;
+        }
+
+        string drive = arguments.UntilFreeDrive ?? FreeSpaceGoal.SystemDriveRoot();
+        try
+        {
+            goal = FreeSpaceGoal.ForLiveDrive(drive, targetBytes);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return ExitCodes.BadArguments;
+        }
+
+        if (goal.IsSatisfied)
+        {
+            return WriteAlreadyMet(arguments, settings, goal);
+        }
+    }
+
     Dictionary<KnownBase, string?>? overrides = TestBaseOverrides();
 
     var engine = new CleaningEngine();
     if (!arguments.Json)
     {
+        if (goal is not null)
+        {
+            Console.WriteLine($"Until {ByteFormatter.Format(goal.TargetFreeBytes)} free on {goal.DriveRoot} (now {ByteFormatter.Format(goal.EffectiveFreeBytes)}).");
+        }
+
         Console.WriteLine($"Scanning {selected.Count} categories…");
     }
 
@@ -266,6 +306,7 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
         progress: arguments.Json ? null : new Progress<CleanProgress>(p =>
             Console.Write($"\r  {ByteFormatter.Format(p.BytesFreedSoFar)} freed — {Truncate(p.CategoryName, 44),-44}")),
         baseOverrides: overrides,
+        freeSpaceGoal: goal,
         cancellationToken: ct);
 
     if (!arguments.Json)
@@ -288,6 +329,16 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
         persisted.Save();
     }
 
+    bool stoppedEarly = false;
+    if (goal is not null)
+    {
+        long onDriveFound = scans.Values
+            .SelectMany(s => s.Items)
+            .Where(i => goal.IsOnDrive(i.Path))
+            .Sum(i => i.SizeBytes);
+        stoppedEarly = goal.IsSatisfied && freed < onDriveFound;
+    }
+
     if (arguments.Json)
     {
         var payload = new
@@ -298,6 +349,7 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
             locked,
             denied,
             log = logger.LogFilePath,
+            untilFree = goal is null ? null : UntilFreeSnapshot(goal, alreadyMet: false, stoppedEarly),
             categories = results.ToDictionary(kv => kv.Key, kv => new
             {
                 kv.Value.BytesFreed,
@@ -316,6 +368,13 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
     {
         Console.WriteLine($"{(settings.SimulateOnly ? "Would free" : "Freed")}: {ByteFormatter.Format(freed)}   " +
                           $"items: {results.Values.Sum(r => r.Deleted):N0}   in-use skipped: {locked:N0}   access denied: {denied:N0}");
+        if (goal is not null)
+        {
+            Console.WriteLine(goal.IsSatisfied
+                ? $"{goal.DriveRoot} now has at least {ByteFormatter.Format(goal.EffectiveFreeBytes)} free (target {ByteFormatter.Format(goal.TargetFreeBytes)})."
+                : $"{goal.DriveRoot} still has {ByteFormatter.Format(goal.EffectiveFreeBytes)} free (target {ByteFormatter.Format(goal.TargetFreeBytes)}) — selected junk was not enough.");
+        }
+
         foreach (string message in errors.Take(10))
         {
             Console.Error.WriteLine($"  ! {message}");
@@ -329,6 +388,41 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
 
     return locked + denied > 0 || errors.Count > 0 ? ExitCodes.Partial : ExitCodes.Ok;
 }
+
+static int WriteAlreadyMet(ArgumentParser arguments, AppSettings settings, FreeSpaceGoal goal)
+{
+    if (arguments.Json)
+    {
+        var payload = new
+        {
+            simulated = settings.SimulateOnly,
+            bytesFreed = 0L,
+            deleted = 0,
+            locked = 0,
+            denied = 0,
+            log = (string?)null,
+            untilFree = UntilFreeSnapshot(goal, alreadyMet: true, stoppedEarly: false),
+            categories = new Dictionary<string, object>(),
+        };
+        Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
+    }
+    else
+    {
+        Console.WriteLine($"{goal.DriveRoot} already has {ByteFormatter.Format(goal.EffectiveFreeBytes)} free (target {ByteFormatter.Format(goal.TargetFreeBytes)}). Nothing to delete.");
+    }
+
+    return ExitCodes.Ok;
+}
+
+static object UntilFreeSnapshot(FreeSpaceGoal goal, bool alreadyMet, bool stoppedEarly) => new
+{
+    drive = goal.DriveRoot,
+    targetBytes = goal.TargetFreeBytes,
+    reached = goal.IsSatisfied,
+    alreadyMet,
+    freeBytes = goal.EffectiveFreeBytes,
+    stoppedEarly,
+};
 
 static async Task<int> CommandHogsAsync(ArgumentParser arguments, CancellationToken ct)
 {

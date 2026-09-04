@@ -1,3 +1,6 @@
+using BitBroom.Core.Engine;
+using BitBroom.Core.Util;
+
 namespace BitBroom.Cli;
 
 /// <summary>
@@ -23,6 +26,15 @@ public sealed class ArgumentParser
     /// <summary>dupes: minimum file size in MB to consider (default 1 MB).</summary>
     public int MinSizeMb { get; } = 1;
 
+    /// <summary>
+    /// When set, <c>clean</c> stops once this many bytes are free on
+    /// <see cref="UntilFreeDrive"/> (or the system drive when that is null).
+    /// </summary>
+    public long? UntilFreeBytes { get; }
+
+    /// <summary>Normalized drive root (e.g. <c>C:\</c>) when <c>--drive</c> was passed.</summary>
+    public string? UntilFreeDrive { get; }
+
     /// <summary>Non-null when the arguments were invalid; the CLI prints it and returns exit code 3.</summary>
     public string? Error { get; }
 
@@ -34,6 +46,8 @@ public sealed class ArgumentParser
         int top = 25;
         int depth = 2;
         int minSizeMb = 1;
+        long? untilFreeBytes = null;
+        string? untilFreeDrive = null;
 
         // Returns the value token for a value-flag, or sets Error and returns null when the
         // value is missing or looks like another option.
@@ -163,6 +177,42 @@ public sealed class ArgumentParser
                     break;
                 }
 
+                case "--until-free" or "--target-free":
+                {
+                    string? value = TakeValue(arg, ref i);
+                    if (value is not null)
+                    {
+                        if (ByteSizeParser.TryParse(value, out long parsed, out string parseError))
+                        {
+                            untilFreeBytes = parsed;
+                        }
+                        else
+                        {
+                            error ??= $"Invalid value for --until-free: {parseError}";
+                        }
+                    }
+
+                    break;
+                }
+
+                case "--drive":
+                {
+                    string? value = TakeValue(arg, ref i);
+                    if (value is not null)
+                    {
+                        if (FreeSpaceGoal.TryParseDrive(value, out string root, out string parseError))
+                        {
+                            untilFreeDrive = root;
+                        }
+                        else
+                        {
+                            error ??= parseError;
+                        }
+                    }
+
+                    break;
+                }
+
                 default:
                     if (arg.StartsWith('-'))
                     {
@@ -187,6 +237,13 @@ public sealed class ArgumentParser
         Top = top;
         Depth = depth;
         MinSizeMb = minSizeMb;
+        UntilFreeBytes = untilFreeBytes;
+        UntilFreeDrive = untilFreeDrive;
+        if (untilFreeDrive is not null && untilFreeBytes is null)
+        {
+            error ??= "Option '--drive' is only valid together with '--until-free'.";
+        }
+
         Error = error;
     }
 }

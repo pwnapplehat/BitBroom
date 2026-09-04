@@ -102,6 +102,10 @@ Simulation mode short-circuits step 3+ into log-only writes.
 - **Custom folders** go through the same guard as shipped rules (anchored at the folder's
   parent): protected locations are refused at scan time even if the user adds them.
 - Optional **Recycle Bin mode** routes ordinary cleans through the bin for an undo window.
+- **CLI `--until-free`** uses the same walker and `SafeDeleter`; it only decides when to
+  stop. Files on other volumes are skipped. All-or-nothing specials (Windows.old, Recycle
+  Bin, event logs, Delivery Optimization) run only when their whole size fits the remaining
+  deficit. Recycle Bin *mode* is refused because the bin does not free space.
 - Risk levels: **Safe** (pure caches; the only level allowed to be on-by-default — enforced
   by a test), **Moderate** (regenerable with a cost), **Advanced** (irreversible
   consequences; explicit warnings; excluded from CLI `--all`).

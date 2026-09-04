@@ -5,6 +5,16 @@ All notable changes to BitBroom are documented here. Format follows
 
 ## Unreleased
 
+### Added
+- **CLI `--until-free`** ([#1](https://github.com/pwnapplehat/BitBroom/issues/1)):
+  `bitbroom-cli clean --until-free 20G --yes` stops deleting once that much space is
+  free on the system drive (`--drive D:` for another volume). Largest junk on that
+  volume is removed first; other drives are left alone. All-or-nothing categories
+  (Windows.old, Recycle Bin, event logs, Delivery Optimization) are skipped when they
+  are bigger than the remaining deficit, so a 20 GB rollback folder is not deleted to
+  free 2 GB. Recycle Bin mode is refused (the bin does not free space). `--dry-run`
+  still previews the subset.
+
 ### Changed (release pipeline)
 - **GitHub Actions cuts the GitHub Release.** A `v*` tag whose name matches
   `Directory.Build.props` Version publishes the portable zips, `BitBroom-<ver>-setup.exe`,

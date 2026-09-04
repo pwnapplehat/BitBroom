@@ -87,11 +87,18 @@ public sealed class DeliveryOptimizationCategory : CleanCategory
             return result;
         }
 
+        if (context.SkipAtomicCategory(Id, scan.TotalBytes, CachePath))
+        {
+            result.Duration = stopwatch.Elapsed;
+            return result;
+        }
+
         if (context.Simulate)
         {
             context.Logger.Deleted("Delivery Optimization cache", scan.TotalBytes, simulated: true);
             result.Deleted = scan.Items.Count;
             result.BytesFreed = scan.TotalBytes;
+            context.NoteGoalFreed(scan.TotalBytes);
             result.Duration = stopwatch.Elapsed;
             return result;
         }
@@ -108,6 +115,7 @@ public sealed class DeliveryOptimizationCategory : CleanCategory
             result.BytesFreed = Math.Max(0, scan.TotalBytes - after);
             result.Deleted = scan.Items.Count;
             context.Logger.Deleted("Delivery Optimization cache", result.BytesFreed, simulated: false);
+            context.NoteGoalFreed(result.BytesFreed);
         }
         else
         {
