@@ -230,35 +230,15 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
     bool dryRun = arguments.DryRun;
     settings.SimulateOnly = settings.SimulateOnly || dryRun;
 
-    if (!settings.SimulateOnly && !arguments.Yes)
-    {
-        Console.Error.WriteLine("Refusing to delete without --yes. Use --dry-run to preview.");
-        return ExitCodes.BadArguments;
-    }
-
     // Advanced categories are never cleaned from the CLI unless individually named.
     if (!arguments.ExplicitCategories)
     {
         selected = [.. selected.Where(c => c.Risk != RiskLevel.Advanced)];
     }
 
-    if (!ElevationInfo.IsElevated && selected.Count > 0 && selected.All(c => c.RequiresAdmin))
-    {
-        Console.Error.WriteLine("All selected categories require administrator rights. Re-run from an elevated terminal.");
-        return ExitCodes.NeedsAdmin;
-    }
-
-    WarnAboutAdminCategories(selected);
-
     FreeSpaceGoal? goal = null;
     if (arguments.UntilFreeBytes is long targetBytes)
     {
-        if (settings.CleanToRecycleBin && !settings.SimulateOnly)
-        {
-            Console.Error.WriteLine("--until-free cannot run in Recycle Bin mode: the bin does not free disk space. Turn it off in Settings, or pass --dry-run.");
-            return ExitCodes.BadArguments;
-        }
-
         string drive = arguments.UntilFreeDrive ?? FreeSpaceGoal.SystemDriveRoot();
         try
         {
@@ -270,11 +250,32 @@ static async Task<int> CommandCleanAsync(ArgumentParser arguments, CancellationT
             return ExitCodes.BadArguments;
         }
 
+        // Already enough free space: nothing will be deleted, so --yes is not required.
         if (goal.IsSatisfied)
         {
             return WriteAlreadyMet(arguments, settings, goal);
         }
+
+        if (settings.CleanToRecycleBin && !settings.SimulateOnly)
+        {
+            Console.Error.WriteLine("--until-free cannot run in Recycle Bin mode: the bin does not free disk space. Turn it off in Settings, or pass --dry-run.");
+            return ExitCodes.BadArguments;
+        }
     }
+
+    if (!settings.SimulateOnly && !arguments.Yes)
+    {
+        Console.Error.WriteLine("Refusing to delete without --yes. Use --dry-run to preview.");
+        return ExitCodes.BadArguments;
+    }
+
+    if (!ElevationInfo.IsElevated && selected.Count > 0 && selected.All(c => c.RequiresAdmin))
+    {
+        Console.Error.WriteLine("All selected categories require administrator rights. Re-run from an elevated terminal.");
+        return ExitCodes.NeedsAdmin;
+    }
+
+    WarnAboutAdminCategories(selected);
 
     Dictionary<KnownBase, string?>? overrides = TestBaseOverrides();
 

@@ -23,8 +23,8 @@ gate. Download the `BitBroom-release` artifact if you want the zips/installer wi
 2. Tag the **same** version (CI refuses a mismatch — that protects the in-app updater):
 
 ```bash
-git tag -a v1.2.6 -m "BitBroom v1.2.6"
-git push origin v1.2.6
+git tag -a v1.2.7 -m "BitBroom v1.2.7"
+git push origin v1.2.7
 ```
 
 3. The tag job publishes a GitHub Release with:

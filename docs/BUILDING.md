@@ -51,8 +51,8 @@ iscc installer\bitbroom.iss     # → installer\Output\BitBroom-<version>-setup.
 restore, build, the full test suite, publish x64 + ARM64, pack portable zips + the Inno
 setup.exe + `SHA256SUMS.txt`, and upload those as Actions artifacts.
 
-On a version tag whose name matches `<Version>` in `Directory.Build.props` (`v1.2.5`
-when Version is `1.2.5`; a mismatch fails the job), it also creates the GitHub Release
+On a version tag whose name matches `<Version>` in `Directory.Build.props` (`v1.2.6`
+when Version is `1.2.6`; a mismatch fails the job), it also creates the GitHub Release
 the in-app updater consumes. No local Windows machine is required for that path.
 
 ## Cutting a release

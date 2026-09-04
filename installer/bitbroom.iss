@@ -6,7 +6,7 @@
 ; CI passes /DAppVersion=<Directory.Build.props Version>. The default is the last
 ; shipped version so a local `iscc installer\bitbroom.iss` still builds.
 #ifndef AppVersion
-#define AppVersion "1.2.5"
+#define AppVersion "1.2.6"
 #endif
 #define AppPublisher "BitBroom Contributors"
 #define AppURL "https://bitbroom.app"

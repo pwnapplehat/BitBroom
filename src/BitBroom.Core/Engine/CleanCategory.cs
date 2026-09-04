@@ -158,6 +158,7 @@ public class CleanCategory
 
                 if (goal.ShouldSkipItem(item))
                 {
+                    done++;
                     continue;
                 }
             }

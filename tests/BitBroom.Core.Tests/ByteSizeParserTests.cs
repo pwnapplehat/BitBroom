@@ -17,6 +17,7 @@ public class ByteSizeParserTests
     [InlineData("1B", 1)]
     [InlineData("1048576", 1048576)]
     [InlineData(" 10g ", 10L * 1024 * 1024 * 1024)]
+    [InlineData("20 GB", 20L * 1024 * 1024 * 1024)]
     public void Parses(string text, long expected)
     {
         Assert.True(ByteSizeParser.TryParse(text, out long bytes, out string error), error);

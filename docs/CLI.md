@@ -44,7 +44,8 @@ Rules:
   volumes are left alone. All-or-nothing categories (Windows.old, Recycle Bin, event
   logs, Delivery Optimization) run only when their whole size fits in the remaining
   deficit. Recycle Bin *mode* (Settings) is refused because the bin does not free space.
-  `--dry-run --until-free` still previews the subset that would be deleted.
+  `--dry-run --until-free` still previews the subset that would be deleted. If the drive
+  already meets the target, the command exits 0 without `--yes`.
 
 ### `hogs`
 Report-only inspection of hidden space consumers (hibernation file, page files, WSL/Docker
